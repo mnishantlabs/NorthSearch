@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.env
+.venv/
+venv/
+output/
+*.log
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+tor_data/
+tor-*.*
+
+# Performers data (downloaded via `research performers crawl`)
+# ONNX models are ~166MB each and exceed GitHub's file size limit.
+data/performers/models/
+data/performers/photos/
+data/performers/*.xlsx
+data/performers/*.json
+data/performers/crawl_*.json
+data/performers/embedding_index.npz
+data/performers/crawl_*

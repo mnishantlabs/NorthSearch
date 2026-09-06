@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %} — Search{% endblock %}
+{% block content %}
+<div class="hero">
+    <h1>Deep Research</h1>
+    <p class="subtitle">Enter any topic and let the AI search, scrape, and synthesize the web for you.</p>
+
+    <form id="research-form" hx-post="/api/research"
+          hx-target="#response" hx-swap="innerHTML"
+          hx-trigger="submit">
+        <input type="text" name="query" id="query"
+               placeholder="What do you want to research?..."
+               autocomplete="off" required>
+        <button type="submit" id="submit-btn" class="primary">Start Research</button>
+    </form>
+
+    <div class="mode-toggle">
+        <button type="button" class="mode-btn active" data-mode="research" onclick="setMode('research')">Research</button>
+        <button type="button" class="mode-btn" data-mode="images" onclick="setMode('images')">Images</button>
+    </div>
+
+    <div class="options">
+        <details class="advanced">
+            <summary>Advanced options</summary>
+            <div class="option-grid">
+                <label class="opt">
+                    <span>Dark web search</span>
+                    <input type="checkbox" name="darkweb" id="darkweb">
+                    <small>Search .onion hidden services (requires Tor)</small>
+                </label>
+                <label class="opt">
+                    <span>Max sources</span>
+                    <input type="number" name="max_sources" id="max_sources" value="10" min="1" max="50">
+                    <small>How many pages to scrape</small>
+                </label>
+                <label class="opt">
+                    <span>Sub-queries</span>
+                    <input type="number" name="max_sub_queries" id="max_sub_queries" value="3" min="1" max="8">
+                    <small>How many angles to break the query into</small>
+                </label>
+                <label class="opt">
+                    <span>Model</span>
+                    <select name="model" id="model">
+                        <option value="dolphin3:8b" selected>dolphin3:8b</option>
+                    </select>
+                    <small>Local Ollama model</small>
+                </label>
+            </div>
+        </details>
+    </div>
+
+    <div id="response"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let researchMode = 'research';
+function setMode(mode) {
+    researchMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-mode="' + mode + '"]').classList.add('active');
+    document.getElementById('submit-btn').textContent = mode === 'images' ? 'Search Images' : 'Start Research';
+}
+document.getElementById('research-form').addEventListener('htmx:afterRequest', function(evt) {
+    // Navigate to the research progress page once the job is created
+    if (evt.detail.successful) {
+        try {
+            const data = JSON.parse(evt.detail.xhr.responseText);
+            if (data.job_id) {
+                window.location.href = '/research/' + data.job_id;
+            }
+        } catch(e) { /* ignore */ }
+    }
+});
+document.getElementById('research-form').addEventListener('htmx:htmx:configRequest', function(evt) {
+    // Inject the mode into the form post
+    evt.detail.parameters['mode'] = researchMode;
+});
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/models').then(r => r.json()).then(data => {
+        const sel = document.getElementById('model');
+        if (data.models && data.models.length) {
+            sel.innerHTML = '';
+            data.models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                if (m === data.current) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+    }).catch(() => {});
+});
+</script>
+{% endblock %}

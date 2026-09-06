@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %} — Results{% endblock %}
+{% block content %}
+
+<div class="hero compact">
+    <h1>Results: {{ job.query }}</h1>
+    <a href="/" class="btn-link">← New search</a>
+</div>
+
+{% if job.status == 'done' and job.result %}
+<div class="summary">
+    <h2>Summary</h2>
+    <p>{{ job.result.summary }}</p>
+    <div class="meta-row">
+        <span>Model: <strong>{{ job.result.model_used }}</strong></span>
+        <span>Sources: <strong>{{ job.result.total_sources }}</strong></span>
+        <span>Dark web: <strong>{{ job.result.darkweb_sources }}</strong></span>
+        <span>Findings: <strong>{{ job.result.findings|length }}</strong></span>
+    </div>
+</div>
+
+<div class="tabs">
+    <button class="tab active" data-tab="report">Report</button>
+    <button class="tab" data-tab="urls">Found Links</button>
+    <button class="tab" data-tab="sources">Sources</button>
+    <button class="tab" data-tab="findings">Findings</button>
+    <button class="tab" data-tab="contradictions">Contradictions
+        <span class="count-badge">{{ job.result.contradictions|length }}</span>
+    </button>
+</div>
+
+<!-- Filters bar (applies to URLs + findings + sources) -->
+<div class="filters" id="filters">
+    <input type="text" id="filter-keyword" placeholder="Search keyword…" class="filter-input">
+    <select id="filter-type" class="filter-input">
+        <option value="all">All types</option>
+        <option value="clearnet">Web</option>
+        <option value="darkweb">Dark web</option>
+        <option value="academic">Academic</option>
+    </select>
+    <select id="filter-confidence" class="filter-input">
+        <option value="0">Any confidence</option>
+        <option value="0.5">≥ 50%</option>
+        <option value="0.7">≥ 70%</option>
+        <option value="0.9">≥ 90%</option>
+    </select>
+</div>
+
+<!-- Tab panes -->
+<div id="pane-report" class="tab-pane active">
+    {% for section in job.result.sections %}
+        <div class="report-section">
+            <h3>{{ section.title }}</h3>
+            <div class="report-content">{{ section.content }}</div>
+        </div>
+    {% endfor %}
+</div>
+
+<div id="pane-urls" class="tab-pane" data-filter="urls">
+    <p class="muted">Found URLs come from the research pipeline's live URL table and the saved found_links.md.</p>
+    <!-- Populated by JS from the fetched links file -->
+    <div id="urls-content"><p class="muted">Loading found links…</p></div>
+</div>
+
+<div id="pane-sources" class="tab-pane" data-filter="sources">
+    <div id="sources-content"></div>
+</div>
+
+<div id="pane-findings" class="tab-pane" data-filter="findings">
+    <div id="findings-content"></div>
+</div>
+
+<div id="pane-contradictions" class="tab-pane">
+    {% if job.result.contradictions %}
+        {% for c in job.result.contradictions %}
+            <div class="contradiction"><span class="warn">⚠</span> {{ c }}</div>
+        {% endfor %}
+    {% else %}
+        <p class="muted">No contradictions detected.</p>
+    {% endif %}
+</div>
+
+{# Pass serialized data to JS via a JSON script tag #}
+<script id="result-data" type="application/json">{{ job.result|tojson }}</script>
+
+{% elif job.status == 'error' %}
+<div class="error-box">
+    <h2>Research failed</h2>
+    <p>{{ job.error }}</p>
+    <a href="/" class="btn-link">← Try again</a>
+</div>
+{% endif %}
+{% endblock %}

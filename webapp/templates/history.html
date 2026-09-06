@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %} — History{% endblock %}
+{% block content %}
+
+<div class="hero compact">
+    <h1>Research History</h1>
+    <p class="subtitle">Jobs from this server session.</p>
+    <div class="history-actions">
+        <a href="/" class="btn-link">+ New Research</a>
+        <button class="btn-link danger" id="clear-all">Clear All History</button>
+    </div>
+</div>
+
+{% if jobs %}
+<table class="history-table">
+    <thead>
+        <tr>
+            <th>Query</th>
+            <th>Mode</th>
+            <th>Status</th>
+            <th>Sources</th>
+            <th>Model</th>
+            <th>Started</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for job in jobs %}
+        <tr id="job-row-{{ job.id }}">
+            <td>{{ job.query }}</td>
+            <td><span class="mode-badge">{{ job.mode }}</span></td>
+            <td><span class="status-pill {{ job.status }}">{{ job.status }}</span></td>
+            <td>{{ job.result.total_sources if job.result else job.images|length if job.images else '—' }}</td>
+            <td>{{ job.model }}</td>
+            <td>{{ job.created_at|int|datetime }}</td>
+            <td>
+                {% if job.status == 'done' %}
+                    {% if job.mode == 'images' %}
+                        <a href="/research/{{ job.id }}" class="btn-link">Images</a>
+                    {% else %}
+                        <a href="/results/{{ job.id }}" class="btn-link">View</a>
+                    {% endif %}
+                {% elif job.status == 'error' %}
+                    <a href="/results/{{ job.id }}" class="btn-link">Error</a>
+                {% else %}
+                    <a href="/research/{{ job.id }}" class="btn-link">Live</a>
+                {% endif %}
+                <button class="btn-link danger delete-job" data-id="{{ job.id }}">Delete</button>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">No research has been run yet in this session.</p>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.delete-job').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const id = this.dataset.id;
+        if (!confirm('Delete this research job and its output?')) return;
+        const r = await fetch('/api/jobs/' + id, { method: 'DELETE' });
+        if (r.ok) {
+            const row = document.getElementById('job-row-' + id);
+            if (row) row.remove();
+        }
+    });
+});
+const clearAll = document.getElementById('clear-all');
+if (clearAll) {
+    clearAll.addEventListener('click', async function() {
+        if (!confirm('Delete ALL history jobs and their output folders?')) return;
+        const jobs = document.querySelectorAll('.delete-job');
+        for (const btn of [...jobs]) {
+            await fetch('/api/jobs/' + btn.dataset.id, { method: 'DELETE' });
+            const row = document.getElementById('job-row-' + btn.dataset.id);
+            if (row) row.remove();
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %} — Researching{% endblock %}
+{% block content %}
+
+<div class="hero compact">
+    <h1>Researching: <span id="q-display">{{ job.query }}</span></h1>
+    <p class="subtitle">Watching the AI search, scrape, and analyze…</p>
+    <div class="status-pill" id="status-pill">Running</div>
+</div>
+
+<div class="progress-wrap">
+    <div id="stage-banner" class="stage-banner">Starting…</div>
+
+    <!-- Image search results (only shown in image mode) -->
+    <div id="image-mode-hint" class="image-hint hidden">Image search running… results appear as they're found.</div>
+    <div id="image-gallery" class="image-gallery hidden"></div>
+    <div id="image-count" class="image-count hidden"></div>
+
+    <div class="progress-columns">
+        <div class="col">
+            <h3>Sub-Queries</h3>
+            <ul id="plan-list" class="plan-list"><li>Planning…</li></ul>
+        </div>
+        <div class="col">
+            <h3>Found URLs <span id="url-count" class="count-badge">0</span></h3>
+            <div id="url-list" class="url-list"><p class="muted">No URLs yet…</p></div>
+        </div>
+    </div>
+
+    <div class="progress-columns">
+        <div class="col">
+            <h3>Extracted Sources <span id="source-count" class="count-badge">0</span></h3>
+            <div id="source-list" class="source-list"><p class="muted">Waiting…</p></div>
+        </div>
+        <div class="col">
+            <h3>AI Findings <span id="finding-count" class="count-badge">0</span></h3>
+            <div id="finding-list" class="finding-list"><p class="muted">Waiting…</p></div>
+        </div>
+    </div>
+
+    <div class="log-wrap">
+        <h3>Live Log</h3>
+        <pre id="live-log" class="live-log">Waiting for events…</pre>
+    </div>
+</div>
+
+<a id="view-results" href="/results/{{ job.id }}" class="results-link hidden">View Full Results →</a>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const JOB_ID = "{{ job.id }}";
+const JOB_MODE = "{{ job.mode }}";
+</script>
+{% endblock %}

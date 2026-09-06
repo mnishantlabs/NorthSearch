@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Research{% block title %}{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <a href="/" class="brand">🔬 Deep Research</a>
+        <nav>
+            <a href="/" class="{{ 'active' if active == 'search' else '' }}">New Search</a>
+            <a href="/performers" class="{{ 'active' if active == 'performers' else '' }}">Performers</a>
+            <a href="/history" class="{{ 'active' if active == 'history' else '' }}">History</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="/static/app.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %} — Performers{% endblock %}
+{% block content %}
+<div class="hero compact">
+    <h1>Performers</h1>
+    <p class="subtitle">Face-similarity search against the local performer photo DB, directory browsing, and a crawler to grow the DB.</p>
+</div>
+
+<div class="status-bar" id="perf-status">
+    <span class="muted">Loading status…</span>
+</div>
+
+<div class="tabs">
+    <button class="tab active" data-tab="face">Face Similarity Search</button>
+    <button class="tab" data-tab="browse">Directory</button>
+    <button class="tab" data-tab="crawl">Crawler</button>
+</div>
+
+<!-- ── Face search pane ───────────────────────────────────── -->
+<div class="tab-pane active" id="pane-face">
+    <div class="face-panel">
+        <form id="face-form">
+            <input type="file" name="file" id="face-file" accept="image/*" required>
+            <button type="submit" class="primary">Find Similar Faces</button>
+        </form>
+        <div id="face-uploading" class="hidden muted">Uploading &amp; matching… (first run builds the embedding index, may take ~1 min)</div>
+    </div>
+    <div id="face-results" class="image-gallery"></div>
+</div>
+
+<!-- ── Directory pane ─────────────────────────────────────── -->
+<div class="tab-pane" id="pane-browse">
+    <div class="filters">
+        <input type="text" id="dir-q" class="filter-input" placeholder="Search name…" autocomplete="off">
+        <select id="dir-gender" class="filter-input">
+            <option value="">Any gender</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+        </select>
+        <select id="dir-sort" class="filter-input">
+            <option value="views">Sort: Views</option>
+            <option value="videos">Sort: Videos</option>
+            <option value="name">Sort: Name</option>
+        </select>
+        <button class="btn-link" id="dir-search">Search</button>
+    </div>
+    <table class="history-table" id="dir-table">
+        <thead><tr><th>#</th><th>Name</th><th>Videos</th><th>Views</th><th>Photo</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <div class="dir-more">
+        <button class="btn-link" id="dir-more">Load more</button>
+    </div>
+</div>
+
+<!-- ── Crawler pane ───────────────────────────────────────── -->
+<div class="tab-pane" id="pane-crawl">
+    <div class="crawl-panel">
+        <form id="crawl-form">
+            <label class="opt"><span>Max performers</span>
+                <input type="number" name="max_performers" value="100" min="1" max="5000">
+            </label>
+            <label class="opt"><span>Directory pages</span>
+                <input type="number" name="pages" value="6" min="1" max="100">
+            </label>
+            <label class="opt"><span>Gender</span>
+                <select name="gender">
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                    <option value="m2f">M2F</option>
+                    <option value="f2m">F2M</option>
+                </select>
+            </label>
+            <button type="submit" class="primary">Download #Images &amp; Names</button>
+        </form>
+        <div id="crawl-progress" class="muted"></div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // tabs
+    document.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById('pane-' + btn.dataset.tab).classList.add('active');
+            if (btn.dataset.tab === 'browse') refreshDirectory();
+        });
+    });
+
+    // status
+    function refreshStatus() {
+        fetch('/api/performers/status').then(r => r.json()).then(d => {
+            const c = d.count, ph = d.photos, idx = d.face_index;
+            const st = document.getElementById('perf-status');
+            st.innerHTML = '<span class="muted">' +
+                '<strong class="text">' + c + '</strong> performers · ' +
+                '<strong>' + ph + '</strong> photos · ' +
+                (idx ? '<span class="status-pill done">face index ready</span>' : '<span class="status-pill queued">face index not built</span>') +
+                ' · crawl: <strong>' + (d.crawl ? d.crawl.state : 'idle') + '</strong></span>';
+        }).catch(() => {});
+    }
+    refreshStatus();
+
+    // face search
+    const faceForm = document.getElementById('face-form');
+    faceForm.addEventListener('submit', async function (evt) {
+        evt.preventDefault();
+        const fileInput = document.getElementById('face-file');
+        if (!fileInput.files.length) return;
+        const uploading = document.getElementById('face-uploading');
+        uploading.classList.remove('hidden');
+        const res = document.getElementById('face-results');
+        res.innerHTML = '';
+        const fd = new FormData();
+        fd.append('file', fileInput.files[0]);
+        fd.append('top_k', '8');
+        try {
+            const r = await fetch('/api/performers/face', { method: 'POST', body: fd });
+            const data = await r.json();
+            if (data.error) { res.innerHTML = '<p class="muted">Error: ' + esc(data.error) + '</p>'; return; }
+            if (!data.results || !data.results.length) {
+                res.innerHTML = '<p class="muted">No matching faces found (photo too small / no clear face?).</p>';
+                return;
+            }
+            data.results.forEach(m => {
+                const cell = el('a', 'image-cell');
+                cell.href = '/performers/photo/' + encodeURIComponent(m.photo || '');
+                cell.target = '_blank';
+                const img = document.createElement('img');
+                img.src = '/performers/photo/' + encodeURIComponent(m.photo || '');
+                img.alt = m.name;
+                img.loading = 'lazy';
+                cell.appendChild(img);
+                const cap = el('div', 'image-cap', m.name + ' · ' + m.similarity + ' sim · ' + m.videos + ' vids');
+                const url = m.url ? ' · <a href="' + esc(m.url) + '" target="_blank">profile</a>' : '';
+                cap.innerHTML += url;
+                cell.appendChild(cap);
+                res.appendChild(cell);
+            });
+        } catch (e) {
+            res.innerHTML = '<p class="muted">Error: ' + esc(String(e)) + '</p>';
+        } finally {
+            uploading.classList.add('hidden');
+        }
+    });
+
+    // directory
+    let dirOffset = 0;
+    function refreshDirectory() {
+        const q = document.getElementById('dir-q').value;
+        const gender = document.getElementById('dir-gender').value;
+        const sort = document.getElementById('dir-sort').value;
+        fetch('/api/performers/browse?q=' + encodeURIComponent(q) +
+              '&gender=' + encodeURIComponent(gender) +
+              '&sort=' + encodeURIComponent(sort) +
+              '&limit=50&offset=' + dirOffset)
+            .then(r => r.json()).then(data => {
+                const tbody = document.querySelector('#dir-table tbody');
+                if (dirOffset === 0) tbody.innerHTML = '';
+                data.results.forEach((p, i) => {
+                    const tr = document.createElement('tr');
+                    tr.appendChild(el('td', '', String(dirOffset + i + 1)));
+                    const tdN = document.createElement('td');
+                    tdN.textContent = p.name;
+                    if (p.url) {
+                        const a = el('a', ' muted', ' ↗'); a.href = p.url; a.target = '_blank';
+                        tdN.appendChild(a);
+                    }
+                    tr.appendChild(tdN);
+                    tr.appendChild(el('td', '', String(p.videos)));
+                    tr.appendChild(el('td', '', p.views.toLocaleString()));
+                    const tdP = document.createElement('td');
+                    if (p.photo) {
+                        const a = el('a', '', 'view'); a.href = '/performers/photo/' + encodeURIComponent(p.photo); a.target = '_blank';
+                        tdP.appendChild(a);
+                    } else { tdP.textContent = '—'; }
+                    tr.appendChild(tdP);
+                    tbody.appendChild(tr);
+                });
+            }).catch(() => {});
+    }
+    document.getElementById('dir-search').addEventListener('click', () => { dirOffset = 0; refreshDirectory(); });
+    document.getElementById('dir-more').addEventListener('click', () => {
+        dirOffset += 50; refreshDirectory();
+    });
+    ['dir-q', 'dir-gender', 'dir-sort'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => { dirOffset = 0; refreshDirectory(); });
+    });
+
+    // crawler
+    const crawlForm = document.getElementById('crawl-form');
+    crawlForm.addEventListener('submit', async function (evt) {
+        evt.preventDefault();
+        const progress = document.getElementById('crawl-progress');
+        progress.textContent = 'Starting crawl… watch the status bar.';
+        const fd = new FormData(crawlForm);
+        try {
+            const r = await fetch('/api/performers/crawl', { method: 'POST', body: fd });
+            const data = await r.json();
+            progress.textContent = data.error ? ('Error: ' + data.error) : 'Crawl started in background.';
+            if (data.state === 'running') pollUntilDone();
+        } catch (e) {
+            progress.textContent = 'Error: ' + String(e);
+        }
+    });
+
+    function pollUntilDone() {
+        const t = setInterval(function () {
+            fetch('/api/performers/status').then(r => r.json()).then(d => {
+                refreshStatus();
+                const s = d.crawl ? d.crawl.state : 'idle';
+                if (s === 'running' || s === 'done') {
+                    document.getElementById('crawl-progress').textContent =
+                        (s === 'done' ? 'Done — ' : 'Crawling… ') + 'collected ' + (d.crawl.collected || 0) + ' performers so far.';
+                }
+                if (s === 'done') {
+                    clearInterval(t);
+                    document.getElementById('crawl-progress').textContent =
+                        'Done. Collected ' + d.crawl.collected + ' performers. Face index rebuilt.';
+                }
+                if (s === 'idle' && d.crawl.error) {
+                    clearInterval(t);
+                    document.getElementById('crawl-progress').textContent = 'Crawl error: ' + d.crawl.error;
+                }
+            }).catch(() => {});
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}
