@@ -93,13 +93,19 @@ class SearchEngine:
 
     def search(self, query: str, max_results: int | None = None) -> list[SearchResult]:
         """Run *query* across every enabled provider, merge results."""
+        import re
+
+        # Strip accidental site:onion from clearnet search engines
+        clean_query = re.sub(r'\bsite:\.?onion\b', '', query, flags=re.IGNORECASE).strip()
+        search_term = clean_query or query
+
         limit = max_results or self.config.max_results_per_query
         if self.config.deep:
             limit = int(limit * 1.5)
         all_results: list[SearchResult] = []
         for provider in self._providers:
             try:
-                hits = provider.search(query, limit)
+                hits = provider.search(search_term, limit)
                 all_results.extend(hits)
             except Exception as e:  # noqa: BLE001
                 logger.warning("Provider %s failed: %s", provider.name, e)

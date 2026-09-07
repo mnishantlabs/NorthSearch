@@ -214,6 +214,10 @@ class DarkWebSearcher:
 
     def search(self, query: str, max_results: int = 15) -> list[SearchResult]:
         """Search the dark web across multiple .onion engines and indexers."""
+        # Strip redundant site:onion tokens from query
+        clean_query = re.sub(r'\bsite:\.?onion\b', '', query, flags=re.IGNORECASE).strip()
+        search_term = clean_query or query
+
         results: list[SearchResult] = []
 
         # 1. Native Tor querying if Tor is running
@@ -231,7 +235,7 @@ class DarkWebSearcher:
 
         if tor_available:
             try:
-                onion_results = self._parallel_onion_search(query, proxy_url, max_results)
+                onion_results = self._parallel_onion_search(search_term, proxy_url, max_results)
                 results.extend(onion_results)
             except Exception as e:
                 logger.debug("Native Tor search error: %s", e)
@@ -239,7 +243,7 @@ class DarkWebSearcher:
         # 2. Clearnet Darknet Discovery & Ahmia Gateway
         if len(results) < max_results:
             try:
-                ahmia_results = self._search_ahmia(query, max_results)
+                ahmia_results = self._search_ahmia(search_term, max_results)
                 results.extend(ahmia_results)
             except Exception as e:
                 logger.debug("Ahmia clearnet search failed: %s", e)
@@ -249,7 +253,7 @@ class DarkWebSearcher:
             try:
                 from ddgs import DDGS
                 with DDGS() as ddgs:
-                    for hit in ddgs.text(f"{query} site:onion", max_results=max_results):
+                    for hit in ddgs.text(f"{search_term} site:onion", max_results=max_results):
                         href = hit.get("href", "")
                         if ".onion" in href or "onion" in href:
                             results.append(
