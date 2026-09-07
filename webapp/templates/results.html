@@ -1,93 +1,131 @@
 {% extends "base.html" %}
-{% block title %} — Results{% endblock %}
+{% block title %} — Intelligence Results{% endblock %}
 {% block content %}
 
-<div class="hero compact">
-    <h1>Results: {{ job.query }}</h1>
-    <a href="/" class="btn-link">← New search</a>
-</div>
-
-{% if job.status == 'done' and job.result %}
-<div class="summary">
-    <h2>Summary</h2>
-    <p>{{ job.result.summary }}</p>
-    <div class="meta-row">
-        <span>Model: <strong>{{ job.result.model_used }}</strong></span>
-        <span>Sources: <strong>{{ job.result.total_sources }}</strong></span>
-        <span>Dark web: <strong>{{ job.result.darkweb_sources }}</strong></span>
-        <span>Findings: <strong>{{ job.result.findings|length }}</strong></span>
+<div class="flex justify-between items-center mb-5 flex-wrap gap-3">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Results: {{ job.query }}</h1>
+        <p class="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Synthesized report, evidence ledger, and extracted web sources.</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="/" class="btn-secondary">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>New Investigation</span>
+        </a>
+        <a href="/api/export/{{ job.id }}?fmt=md" target="_blank" class="btn-secondary">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+            <span>Export Markdown</span>
+        </a>
+        <a href="/api/export/{{ job.id }}?fmt=json" target="_blank" class="btn-secondary">
+            <i data-lucide="code" class="w-4 h-4"></i>
+            <span>JSON Data</span>
+        </a>
     </div>
 </div>
 
-<div class="tabs">
-    <button class="tab active" data-tab="report">Report</button>
-    <button class="tab" data-tab="urls">Found Links</button>
-    <button class="tab" data-tab="sources">Sources</button>
-    <button class="tab" data-tab="findings">Findings</button>
-    <button class="tab" data-tab="contradictions">Contradictions
-        <span class="count-badge">{{ job.result.contradictions|length }}</span>
+{% if job.status == 'done' and job.result %}
+<div class="glass-card mb-4">
+    <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="sparkles" class="w-4 h-4 text-indigo-500"></i>
+        <h3 class="text-base font-bold text-zinc-900 dark:text-white">Executive Summary</h3>
+    </div>
+    <p class="text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed">{{ job.result.summary }}</p>
+    <div class="flex gap-4 mt-3 text-xs text-zinc-500 dark:text-zinc-400 flex-wrap">
+        <span>Model: <strong class="text-zinc-900 dark:text-white">{{ job.result.model_used }}</strong></span>
+        <span>Total Sources: <strong class="text-zinc-900 dark:text-white">{{ job.result.total_sources }}</strong></span>
+        <span>Dark Web Sources: <strong class="text-zinc-900 dark:text-white">{{ job.result.darkweb_sources }}</strong></span>
+        <span>Findings: <strong class="text-zinc-900 dark:text-white">{{ job.result.findings|length }}</strong></span>
+    </div>
+</div>
+
+<div class="main-tabs justify-start mb-4">
+    <button class="tab-btn active" data-tab="report">
+        <i data-lucide="file-text" class="w-4 h-4"></i>
+        <span>Synthesized Report</span>
+    </button>
+    <button class="tab-btn" data-tab="findings">
+        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+        <span>Evidence Findings ({{ job.result.findings|length }})</span>
+    </button>
+    <button class="tab-btn" data-tab="sources">
+        <i data-lucide="globe" class="w-4 h-4"></i>
+        <span>Extracted Sources ({{ job.result.sources|length }})</span>
+    </button>
+    <button class="tab-btn" data-tab="contradictions">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <span>Contradictions ({{ job.result.contradictions|length }})</span>
     </button>
 </div>
 
-<!-- Filters bar (applies to URLs + findings + sources) -->
-<div class="filters" id="filters">
-    <input type="text" id="filter-keyword" placeholder="Search keyword…" class="filter-input">
-    <select id="filter-type" class="filter-input">
-        <option value="all">All types</option>
-        <option value="clearnet">Web</option>
-        <option value="darkweb">Dark web</option>
-        <option value="academic">Academic</option>
-    </select>
-    <select id="filter-confidence" class="filter-input">
-        <option value="0">Any confidence</option>
-        <option value="0.5">≥ 50%</option>
-        <option value="0.7">≥ 70%</option>
-        <option value="0.9">≥ 90%</option>
-    </select>
-</div>
-
-<!-- Tab panes -->
-<div id="pane-report" class="tab-pane active">
-    {% for section in job.result.sections %}
-        <div class="report-section">
-            <h3>{{ section.title }}</h3>
-            <div class="report-content">{{ section.content }}</div>
-        </div>
-    {% endfor %}
-</div>
-
-<div id="pane-urls" class="tab-pane" data-filter="urls">
-    <p class="muted">Found URLs come from the research pipeline's live URL table and the saved found_links.md.</p>
-    <!-- Populated by JS from the fetched links file -->
-    <div id="urls-content"><p class="muted">Loading found links…</p></div>
-</div>
-
-<div id="pane-sources" class="tab-pane" data-filter="sources">
-    <div id="sources-content"></div>
-</div>
-
-<div id="pane-findings" class="tab-pane" data-filter="findings">
-    <div id="findings-content"></div>
-</div>
-
-<div id="pane-contradictions" class="tab-pane">
-    {% if job.result.contradictions %}
-        {% for c in job.result.contradictions %}
-            <div class="contradiction"><span class="warn">⚠</span> {{ c }}</div>
+<!-- Tab Panes -->
+<div id="pane-report" class="tab-pane" style="display: block;">
+    <div class="glass-card">
+        {% for section in job.result.sections %}
+            <div style="margin-bottom: 22px;">
+                <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-1.5">{{ section.title }}</h3>
+                <div class="text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed">{{ section.content }}</div>
+            </div>
         {% endfor %}
-    {% else %}
-        <p class="muted">No contradictions detected.</p>
-    {% endif %}
+    </div>
 </div>
 
-{# Pass serialized data to JS via a JSON script tag #}
-<script id="result-data" type="application/json">{{ job.result|tojson }}</script>
+<div id="pane-findings" class="tab-pane" style="display: none;">
+    <div class="results-grid">
+        {% for f in job.result.findings %}
+            <div class="result-card">
+                <div class="result-card-header">
+                    <span class="source-tag {{ 'darkweb' if f.source_type == 'darkweb' else 'clearnet' }}">{{ f.source_type }}</span>
+                    <span class="sim-badge">{{ (f.confidence * 100)|int }}% Confidence</span>
+                </div>
+                <div class="result-title">{{ f.topic }}</div>
+                <p class="result-snippet">{{ f.content }}</p>
+                <div class="result-url">
+                    <a href="{{ f.source_url }}" target="_blank" rel="noopener noreferrer">
+                        <i data-lucide="external-link" style="width:12px;height:12px;display:inline;"></i>
+                        {{ f.source_url }}
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="pane-sources" class="tab-pane" style="display: none;">
+    <div class="results-grid">
+        {% for s in job.result.sources %}
+            <div class="result-card">
+                <div class="result-card-header">
+                    <span class="source-tag {{ 'darkweb' if s.source_type == 'darkweb' else 'clearnet' }}">{{ s.source_type }}</span>
+                    <span style="font-size: 11px; color: var(--text-muted);">Score: {{ s.quality_score }}</span>
+                </div>
+                <a href="{{ s.url }}" target="_blank" class="result-title">{{ s.title or s.url }}</a>
+                <p class="result-snippet">{{ s.text[:220] }}...</p>
+                <div class="result-url">{{ s.url }}</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="pane-contradictions" class="tab-pane" style="display: none;">
+    <div class="glass-card">
+        {% if job.result.contradictions %}
+            {% for c in job.result.contradictions %}
+                <div style="padding: 10px; background: rgba(239,68,68,0.1); border-left: 3px solid var(--danger); margin-bottom: 8px; border-radius: 4px;">
+                    <span style="color: var(--danger); font-weight: bold;">⚠ Contradiction:</span> {{ c }}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: var(--text-secondary);">No contradictory facts detected across sources.</p>
+        {% endif %}
+    </div>
+</div>
 
 {% elif job.status == 'error' %}
-<div class="error-box">
-    <h2>Research failed</h2>
-    <p>{{ job.error }}</p>
-    <a href="/" class="btn-link">← Try again</a>
+<div class="glass-card" style="border-color: var(--danger);">
+    <h2 style="color: var(--danger);">Research Task Failed</h2>
+    <p style="color: var(--text-secondary); margin: 6px 0 14px;">{{ job.error }}</p>
+    <a href="/" class="btn-primary">← Try Again</a>
 </div>
 {% endif %}
+
 {% endblock %}

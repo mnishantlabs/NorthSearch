@@ -16,6 +16,9 @@ output/
 .pytest_cache/
 tor_data/
 tor-*.*
+*.db
+*.sqlite3
+*.sqlite
 
 # Performers data (downloaded via `research performers crawl`)
 # ONNX models are ~166MB each and exceed GitHub's file size limit.

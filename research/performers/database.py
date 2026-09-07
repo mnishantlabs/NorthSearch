@@ -1,17 +1,4 @@
-"""Performer directory database built from local metadata and photos.
-
-The directory combines:
-
-* ``ph_starts_p_all.xlsx`` / ``ph_starts_f.xlsx`` – the master list of
-  performer names with published video and view counts scraped from public
-  porn-star index pages.
-* ``photos/*_b800.png`` – face photos of professional performers, named
-  ``<Real Name>_b800.png``.
-
-The database exposes lookup, filtering, sorting and a small persisted JSON
-index so the web UI can browse the directory without re-parsing the
-spreadsheets on every request.
-"""
+"""Performer directory database with age, country, categories, and photo indexing."""
 
 from __future__ import annotations
 
@@ -30,9 +17,22 @@ _PHOTO_RE = re.compile(r"^(.*?)%s$" % re.escape(PHOTO_SUFFIX), re.IGNORECASE)
 
 
 class Performer:
-    """A single performer entry in the directory."""
+    """A single performer / creator entry in the directory."""
 
-    __slots__ = ("name", "videos", "views", "photo", "gender", "url", "birthdate")
+    __slots__ = (
+        "name",
+        "videos",
+        "views",
+        "photo",
+        "photo_url",
+        "gender",
+        "url",
+        "birthdate",
+        "age",
+        "country",
+        "category",
+        "onlyfans_url",
+    )
 
     def __init__(
         self,
@@ -40,17 +40,27 @@ class Performer:
         videos: int = 0,
         views: int = 0,
         photo: str | None = None,
+        photo_url: str | None = None,
         gender: str | None = None,
         url: str | None = None,
         birthdate: str | None = None,
+        age: int | None = None,
+        country: str | None = None,
+        category: str | None = None,
+        onlyfans_url: str | None = None,
     ) -> None:
         self.name = name
         self.videos = int(videos or 0)
         self.views = int(views or 0)
         self.photo = photo
+        self.photo_url = photo_url
         self.gender = gender
         self.url = url
         self.birthdate = birthdate
+        self.age = int(age) if age is not None else None
+        self.country = country
+        self.category = category
+        self.onlyfans_url = onlyfans_url
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -58,9 +68,14 @@ class Performer:
             "videos": self.videos,
             "views": self.views,
             "photo": self.photo,
+            "photo_url": self.photo_url,
             "gender": self.gender,
             "url": self.url,
             "birthdate": self.birthdate,
+            "age": self.age,
+            "country": self.country,
+            "category": self.category,
+            "onlyfans_url": self.onlyfans_url,
         }
 
     @classmethod
@@ -70,23 +85,24 @@ class Performer:
             videos=d.get("videos", 0),
             views=d.get("views", 0),
             photo=d.get("photo"),
+            photo_url=d.get("photo_url"),
             gender=d.get("gender"),
             url=d.get("url"),
             birthdate=d.get("birthdate"),
+            age=d.get("age"),
+            country=d.get("country"),
+            category=d.get("category"),
+            onlyfans_url=d.get("onlyfans_url"),
         )
 
 
 class PerformerDatabase:
-    """In-memory performer directory with search/filter/sort helpers."""
+    """In-memory performer directory with advanced search/filter/sort helpers."""
 
     def __init__(self, config: PerformerConfig | None = None) -> None:
         self.config = config or PerformerConfig()
         self._records: dict[str, Performer] = {}
         self._index_file = Path(self.config.data_dir) / "performer_index.json"
-
-    # ------------------------------------------------------------------
-    # build / load
-    # ------------------------------------------------------------------
 
     def build(self) -> "PerformerDatabase":
         """Scan xlsx metadata + photos and normalise into records."""
@@ -94,53 +110,55 @@ class PerformerDatabase:
         stats = self._load_xlsx_stats(data_dir)
         photos = self._scan_photos(data_dir)
 
-        # seed records from the master stats list
+        # 1. Seed records from master stats list
         for name, (videos, views) in stats.items():
             self._records[name] = Performer(
                 name=name,
                 videos=videos,
                 views=views,
-                gender=self._guess_gender(name, stats),
             )
 
-        # add photo-only performers that are missing from the stats list
+        # 2. Add photo-only performers and attach photos
         for name, photo in photos.items():
             if name not in self._records:
                 self._records[name] = Performer(name=name, gender="female")
+            self._records[name].photo = photo
 
-        # attach photo filenames
-        for name, photo in photos.items():
-            rec = self._records.get(name)
-            if rec is not None:
-                rec.photo = photo
+        # 3. Enrich with verified seed profiles (Age, Country, OnlyFans, Categories)
+        self._apply_known_profiles()
 
-        logger.info("Built performer database: %d records", len(self._records))
+        logger.info("Built performer database: %d records (%d photos)", len(self._records), len(photos))
         return self
 
-    def attach_crawled(self, crawled: list[dict[str, Any]]) -> int:
-        """Merge crawled records (gender/url/birthdate/rank) by name."""
-        updated = 0
-        for item in crawled:
-            name = str(item.get("name", "")).strip()
-            if not name.lower():
-                continue
-            rec = self._records.get(name)
-            if rec is None:
-                rec = Performer(name=name)
-                self._records[name] = rec
-                updated += 1
-            if item.get("gender"):
-                rec.gender = str(item["gender"])
-            if item.get("url"):
-                rec.url = str(item["url"])
-            if item.get("birthdate"):
-                rec.birthdate = str(item["birthdate"])
-            if not updated and (item.get("gender") or item.get("url") or item.get("birthdate")):
-                updated += 1
-        return updated
+    def _apply_known_profiles(self) -> None:
+        """Enrich existing and new records with curated seed metadata."""
+        try:
+            from research.performers.seed_data import KNOWN_PERFORMER_PROFILES
+            for name, meta in KNOWN_PERFORMER_PROFILES.items():
+                rec = self._records.get(name)
+                if rec is None:
+                    rec = Performer(name=name)
+                    self._records[name] = rec
+                
+                if meta.get("age"):
+                    rec.age = meta["age"]
+                if meta.get("country"):
+                    rec.country = meta["country"]
+                if meta.get("category"):
+                    rec.category = meta["category"]
+                if meta.get("onlyfans_url"):
+                    rec.onlyfans_url = meta["onlyfans_url"]
+                if meta.get("gender"):
+                    rec.gender = meta["gender"]
+                if meta.get("videos") and (not rec.videos or meta["videos"] < rec.videos):
+                    rec.videos = meta["videos"]
+                if meta.get("views") and not rec.views:
+                    rec.views = meta["views"]
+        except Exception as e:
+            logger.debug("Failed to enrich with seed profiles: %s", e)
 
     def save(self) -> None:
-        """Persist the normalized index JSON next to the source data."""
+        """Persist normalized index JSON."""
         try:
             self._index_file.parent.mkdir(parents=True, exist_ok=True)
             tmp = self._index_file.with_suffix(".tmp")
@@ -156,48 +174,82 @@ class PerformerDatabase:
             logger.debug("Failed to persist performer index", exc_info=True)
 
     def load(self) -> bool:
-        """Load a previously persisted index; returns False if none exists."""
+        """Load previously persisted index; syncs any new photos from disk."""
         if not self._index_file.exists():
             return False
         try:
             data = json.loads(self._index_file.read_text(encoding="utf-8"))
         except Exception:
-            logger.debug("Failed to read performer index", exc_info=True)
             return False
         self._records = {d["name"]: Performer.from_dict(d) for d in data}
-        logger.info("Loaded %d performers from index", len(self._records))
-        return True
 
-    # ------------------------------------------------------------------
-    # queries
-    # ------------------------------------------------------------------
+        # Sync disk photos in case files were added
+        photos = self._scan_photos(Path(self.config.data_dir))
+        for name, photo in photos.items():
+            if name in self._records:
+                self._records[name].photo = photo
+            else:
+                self._records[name] = Performer(name=name, photo=photo, gender="female")
+
+        # Re-apply verified seed metadata
+        self._apply_known_profiles()
+
+        return True
 
     def search(
         self,
         query: str = "",
         gender: str | None = None,
-        sort_by: str = "views",
+        has_photo: bool | None = None,
+        category: str | None = None,
+        country: str | None = None,
+        age_min: int | None = None,
+        age_max: int | None = None,
+        sort_by: str = "has_photo",
         limit: int = 50,
         offset: int = 0,
     ) -> list[Performer]:
-        """Return performers matching the filter, sorted."""
+        """Return performers matching rich criteria, sorted."""
         q = query.strip().lower()
-        results = []
+        cat_q = (category or "").strip().lower()
+        country_q = (country or "").strip().lower()
+
+        results: list[Performer] = []
         for rec in self.all_records():
             if q and q not in rec.name.lower():
                 continue
-            if gender and gender not in ("all", "any", "") and rec.gender != gender:
+            if gender and gender not in ("all", "any", "") and rec.gender and rec.gender != gender:
                 continue
+            if has_photo is True and not rec.photo:
+                continue
+            if cat_q and cat_q not in ("all", "any", ""):
+                if not rec.category or cat_q not in rec.category.lower():
+                    continue
+            if country_q and country_q not in ("all", "any", ""):
+                if not rec.country or country_q not in rec.country.lower():
+                    continue
+            if age_min is not None and (rec.age is None or rec.age < age_min):
+                continue
+            if age_max is not None and (rec.age is None or rec.age > age_max):
+                continue
+
             results.append(rec)
 
+        # Sorting logic
         if sort_by == "name":
             results.sort(key=lambda r: r.name.lower())
         elif sort_by == "videos":
             results.sort(key=lambda r: r.videos, reverse=True)
-        elif sort_by == "similarity":
-            pass  # similarity results are pre-ordered by the face engine
-        else:
+        elif sort_by == "age_asc":
+            results.sort(key=lambda r: (r.age is None, r.age or 999))
+        elif sort_by == "age_desc":
+            results.sort(key=lambda r: (r.age is None, -(r.age or 0)))
+        elif sort_by == "has_photo":
+            # Show records WITH photos first, ordered by views
+            results.sort(key=lambda r: (0 if r.photo else 1, -r.views))
+        else:  # default views
             results.sort(key=lambda r: r.views, reverse=True)
+
         return results[offset : offset + limit]
 
     def get(self, name: str) -> Performer | None:
@@ -210,7 +262,6 @@ class PerformerDatabase:
         return len(self._records)
 
     def photo_path(self, photo: str) -> Path | None:
-        """Resolve a photo filename to a filesystem path, if present."""
         if not photo:
             return None
         p = Path(self.config.data_dir) / "photos" / photo
@@ -219,18 +270,12 @@ class PerformerDatabase:
     def names_with_photos(self) -> list[str]:
         return [r.name for r in self.all_records() if r.photo]
 
-    # ------------------------------------------------------------------
-    # internals
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _load_xlsx_stats(data_dir: Path) -> dict[str, tuple[int, int]]:
-        """Read name -> (videos, views) from the master spreadsheet."""
         stats: dict[str, tuple[int, int]] = {}
         try:
             import openpyxl
         except ImportError:
-            logger.warning("openpyxl not installed; performer stats will be empty")
             return stats
 
         master = data_dir / "ph_starts_p_all.xlsx"
@@ -238,18 +283,17 @@ class PerformerDatabase:
             return stats
         try:
             wb = openpyxl.load_workbook(master, read_only=True)
+            ws = wb.active
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or not row[0]:
+                    continue
+                name = str(row[0]).strip()
+                videos = int(float(row[1])) if row[1] is not None else 0
+                views = int(float(row[2])) if row[2] is not None else 0
+                stats[name] = (videos, views)
+            wb.close()
         except Exception:
-            logger.debug("Failed to read spreadsheet", exc_info=True)
-            return stats
-        ws = wb.active
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row or not row[0]:
-                continue
-            name = str(row[0]).strip()
-            videos = int(float(row[1])) if row[1] is not None else 0
-            views = int(float(row[2])) if row[2] is not None else 0
-            stats[name] = (videos, views)
-        wb.close()
+            pass
         return stats
 
     @staticmethod
@@ -264,16 +308,8 @@ class PerformerDatabase:
                 photos[m.group(1).strip()] = p.name
         return photos
 
-    @staticmethod
-    def _guess_gender(name: str, stats: dict[str, tuple[int, int]]) -> str | None:
-        """Heuristic: names in the *_f* spreadsheet rows are female-leaning."""
-        # ph_starts_f.xlsx contains the publicly listed female directory,
-        # but we only load the master file here; keep it null unless known.
-        return None
-
 
 def build_performer_database(force: bool = False) -> PerformerDatabase:
-    """Build (and cache) the performer database for the config."""
     db = PerformerDatabase()
     if not force and db.load():
         return db

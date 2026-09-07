@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %} — System Documentation &amp; User Guide{% endblock %}
+{% block content %}
+
+<div class="hero">
+    <h1>Platform Documentation &amp; User Guide</h1>
+    <p class="subtitle">Complete technical architecture, search engine guides, darknet discovery protocols, and REST API references.</p>
+</div>
+
+<div class="docs-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="docs-sidebar">
+        <div class="glass-card" style="padding: 16px; position: sticky; top: 80px;">
+            <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 12px; letter-spacing: 0.5px;">
+                Documentation Index
+            </div>
+            <nav class="docs-nav">
+                <a href="#overview" class="docs-nav-item active"><i data-lucide="compass"></i> Overview &amp; Architecture</a>
+                <a href="#deep-research" class="docs-nav-item"><i data-lucide="brain"></i> Deep AI Research</a>
+                <a href="#multi-search" class="docs-nav-item"><i data-lucide="zap"></i> Multi-Engine &amp; Knowledge Index</a>
+                <a href="#darknet" class="docs-nav-item"><i data-lucide="shield"></i> Tor &amp; Darknet Discovery</a>
+                <a href="#visual-search" class="docs-nav-item"><i data-lucide="image"></i> Visual &amp; Reverse Search</a>
+                <a href="#scraper" class="docs-nav-item"><i data-lucide="bot"></i> Scraper &amp; Content Rules</a>
+                <a href="#directory" class="docs-nav-item"><i data-lucide="database"></i> Performer Intelligence DB</a>
+                <a href="#api-reference" class="docs-nav-item"><i data-lucide="code"></i> REST API Reference</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content Articles -->
+    <div class="docs-content">
+        <!-- Section 1: Overview -->
+        <section id="overview" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">Getting Started</div>
+                <h2>Overview &amp; System Architecture</h2>
+            </div>
+            <p>
+                <strong>NorthSearch 2.0</strong> is an autonomous deep intelligence, multimodal search, and persistent knowledge aggregation platform. It orchestrates clearnet search engines, Tor darknet discovery, local SQLite FTS5 vector and full-text indexes, and local Ollama LLMs to perform private, resilient, and comprehensive research without relying on third-party cloud trackers.
+            </p>
+
+            <div class="doc-callout info">
+                <i data-lucide="info"></i>
+                <div>
+                    <strong>Zero-Leak Architecture:</strong> All search queries, embeddings, scraped profiles, and Ollama LLM inferences run locally on your machine.
+                </div>
+            </div>
+
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">Core Components</h3>
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <i data-lucide="zap" style="color: var(--primary);"></i>
+                    <h4>Multi-Engine Hub</h4>
+                    <p>Parallel queries across DuckDuckGo, Bing, Yahoo, Wikipedia, SearXNG, Yandex, Brave, Qwant, Mojeek, and Local Knowledge Base.</p>
+                </div>
+                <div class="feature-box">
+                    <i data-lucide="shield" style="color: var(--red);"></i>
+                    <h4>Tor Darknet Gateway</h4>
+                    <p>Dual-mode onion search: live SOCKS5 Tor network proxy with automatic clearnet fallback discovery for hidden services.</p>
+                </div>
+                <div class="feature-box">
+                    <i data-lucide="image" style="color: var(--cyan);"></i>
+                    <h4>Dual Visual Search</h4>
+                    <p>Perceptual dHash/pHash matching against local SQLite database + simultaneous online reverse web image lookup.</p>
+                </div>
+                <div class="feature-box">
+                    <i data-lucide="database" style="color: var(--green);"></i>
+                    <h4>Continuous Knowledge Memory</h4>
+                    <p>Autonomous FTS5 full-text indexing stores every queried result, scraped snippet, and crawled entity to build a local offline search index.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Deep AI Research -->
+        <section id="deep-research" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">AI Pipeline</div>
+                <h2>Deep AI Research &amp; Synthesis</h2>
+            </div>
+            <p>
+                The Deep AI Research pipeline transforms high-level research questions into detailed investigative reports through an iterative, autonomous workflow:
+            </p>
+            
+            <ol class="doc-list">
+                <li><strong>Query Decomposition:</strong> The local LLM (e.g. <code>dolphin3:8b</code> or <code>llama3.1</code>) breaks down your topic into targeted sub-queries.</li>
+                <li><strong>Parallel Multi-Engine Harvesting:</strong> Sub-queries are dispatched across all active clearnet and darknet engines concurrently.</li>
+                <li><strong>Content Extraction &amp; Cleaning:</strong> Web pages are scraped, parsed with Readability algorithms, and distilled into high-density snippets.</li>
+                <li><strong>Persistent Indexing:</strong> Harvested text is saved into the local SQLite FTS5 Knowledge Base.</li>
+                <li><strong>Synthesis &amp; Verification:</strong> The LLM synthesizes verified facts with markdown tables, key takeaways, and direct source citations.</li>
+            </ol>
+        </section>
+
+        <!-- Section 3: Multi-Engine & Knowledge Index -->
+        <section id="multi-search" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">Search Technology</div>
+                <h2>Multi-Engine Quick Search &amp; Knowledge Index</h2>
+            </div>
+            <p>
+                Quick Multi-Search sends your query simultaneously to up to 10 distinct search providers. Every engine utilizes modern TLS impersonation (via <code>curl_cffi</code>) and anti-bot retry strategies so requests succeed reliably.
+            </p>
+
+            <h3 style="margin-top: 18px; margin-bottom: 8px;">Keyword Inclusion &amp; Exclusion Filters</h3>
+            <p>
+                You can enforce strict content rules on your search results:
+            </p>
+            <ul class="doc-list">
+                <li><strong>Must Include:</strong> Comma-separated terms (e.g. <code>open-source, python, github</code>). Results are only shown if their title, snippet, or URL contains all specified terms.</li>
+                <li><strong>Must Exclude:</strong> Terms (e.g. <code>sponsored, affiliate, pinterest</code>) that immediately discard matching entries from the final results.</li>
+            </ul>
+
+            <div class="doc-callout tip" style="margin-top: 14px;">
+                <i data-lucide="lightbulb"></i>
+                <div>
+                    <strong>Knowledge Base Singleton:</strong> All valid results returned by search queries are automatically indexed into <code>data/knowledge_base.db</code>. Over time, your local database can answer queries instantly without hitting external networks.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Tor & Darknet Discovery -->
+        <section id="darknet" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">Darknet Protocol</div>
+                <h2>Tor &amp; Darknet Discovery</h2>
+            </div>
+            <p>
+                NorthSearch provides seamless access to Tor hidden services (<code>.onion</code> domains) with a robust two-layer architecture:
+            </p>
+
+            <div class="code-box">
+                <div class="code-box-header">
+                    <span>Darknet Search Mechanics</span>
+                    <span>Routing</span>
+                </div>
+                <pre><code>1. Native Tor Proxy: Checks localhost:9050 / localhost:9150 (Tor Expert Bundle / Tor Browser).
+   -> If active: Queries Ahmia (.onion), Tor66, and Haystak via SOCKS5.
+2. Clearnet Discovery Fallback:
+   -> If Tor daemon is offline: Queries indexed onion gateways via DDGS to harvest live .onion links.
+3. Resilience: Darknet search NEVER fails or blocks your browser even when Tor is disconnected.</code></pre>
+            </div>
+        </section>
+
+        <!-- Section 5: Visual Search -->
+        <section id="visual-search" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">Computer Vision</div>
+                <h2>Visual &amp; Reverse Image Search</h2>
+            </div>
+            <p>
+                Upload any photo (JPG, PNG, WEBP) to perform dual-layer visual matching:
+            </p>
+            <ul class="doc-list">
+                <li><strong>Local Perceptual Hashing (dHash / pHash / Average Hash):</strong> Computes structural 64-bit difference vectors and queries local SQLite database for matching face/performer records. Returns similarity percentage.</li>
+                <li><strong>Online Reverse Web Discovery:</strong> Queries Google Images and Bing Visual Search to locate original web pages, high-resolution source photos, and identity profiles across the open web.</li>
+            </ul>
+        </section>
+
+        <!-- Section 6: Scraper & Content Rules -->
+        <section id="scraper" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">Data Harvesting</div>
+                <h2>Custom Scraper &amp; DB Updater</h2>
+            </div>
+            <p>
+                The in-built web crawler extracts profile information, metadata, and avatars from any target website or directory.
+            </p>
+            <ul class="doc-list">
+                <li><strong>Content Rule Verification:</strong> Crawls target pages, extracts full text, and ensures content satisfies your required "Must Include" and "Must Exclude" keyword filters before writing to SQLite.</li>
+                <li><strong>Automatic Image Pipeline:</strong> Downloads target photo assets, converts them into standard format in <code>data/performer_photos/</code>, and links them to the database records.</li>
+            </ul>
+        </section>
+
+        <!-- Section 7: Performer Intelligence DB -->
+        <section id="directory" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">Database Explorer</div>
+                <h2>Performer Intelligence Database &amp; Video Explorer</h2>
+            </div>
+            <p>
+                The directory provides rich faceted exploration for indexed creators, OnlyFans stars, and performers:
+            </p>
+            <ul class="doc-list">
+                <li><strong>Faceted Filters:</strong> Filter by Category (OnlyFans Star, New Star 18-24, Top Star), Country / Origin (US, UK, France, Germany, Japan, Colombia, Brazil, etc.), Age ranges, and Photos only.</li>
+                <li><strong>Tube Video &amp; Scene Integration:</strong> Clicking any performer opens a high-speed modal that automatically aggregates and renders video streams and scenes from adult tube networks.</li>
+                <li><strong>Photo Enrichment Crawler:</strong> Automatically searches and updates missing performer avatars in the background.</li>
+            </ul>
+        </section>
+
+        <!-- Section 8: REST API Reference -->
+        <section id="api-reference" class="glass-card doc-section">
+            <div class="doc-header">
+                <div class="doc-badge">API Documentation</div>
+                <h2>REST API Endpoints</h2>
+            </div>
+
+            <div class="api-endpoint">
+                <div class="api-header">
+                    <span class="http-method post">POST</span>
+                    <span class="endpoint-path">/api/quick-search</span>
+                </div>
+                <p>Executes multi-engine search and saves results into the local Knowledge Base.</p>
+                <div class="table-wrap">
+                    <table class="api-param-table">
+                        <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>query</code></td><td>string</td><td>Yes</td><td>Search query string</td></tr>
+                            <tr><td><code>engines</code></td><td>string</td><td>No</td><td>Comma-separated list (e.g. <code>duckduckgo,bing,wikipedia</code>)</td></tr>
+                            <tr><td><code>darkweb</code></td><td>boolean</td><td>No</td><td>Include Tor .onion discovery</td></tr>
+                            <tr><td><code>must_include</code></td><td>string</td><td>No</td><td>Required keywords</td></tr>
+                            <tr><td><code>must_exclude</code></td><td>string</td><td>No</td><td>Forbidden keywords</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="api-endpoint" style="margin-top: 16px;">
+                <div class="api-header">
+                    <span class="http-method post">POST</span>
+                    <span class="endpoint-path">/api/reverse-image</span>
+                </div>
+                <p>Upload an image for local perceptual hash matching and online reverse web search.</p>
+                <div class="table-wrap">
+                    <table class="api-param-table">
+                        <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>file</code></td><td>file</td><td>Yes</td><td>Multipart image file upload</td></tr>
+                            <tr><td><code>top_k</code></td><td>integer</td><td>No</td><td>Maximum local matches to return (default: 8)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="api-endpoint" style="margin-top: 16px;">
+                <div class="api-header">
+                    <span class="http-method get">GET</span>
+                    <span class="endpoint-path">/api/knowledge</span>
+                </div>
+                <p>Search or retrieve statistics from the persistent SQLite FTS5 Knowledge Base index.</p>
+                <div class="table-wrap">
+                    <table class="api-param-table">
+                        <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>q</code></td><td>string</td><td>No</td><td>FTS5 search query</td></tr>
+                            <tr><td><code>limit</code></td><td>integer</td><td>No</td><td>Max records to return (default: 20)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="api-endpoint" style="margin-top: 16px;">
+                <div class="api-header">
+                    <span class="http-method get">GET</span>
+                    <span class="endpoint-path">/api/diagnostics</span>
+                </div>
+                <p>Pings all clearnet providers, Tor gateways, and Ollama LLM to return live status and latency metrics.</p>
+            </div>
+        </section>
+    </div>
+</div>
+
+{% endblock %}

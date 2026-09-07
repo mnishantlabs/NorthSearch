@@ -1,234 +1,230 @@
 {% extends "base.html" %}
-{% block title %} — Performers{% endblock %}
+{% block title %} — Intelligence Performer Directory{% endblock %}
 {% block content %}
-<div class="hero compact">
-    <h1>Performers</h1>
-    <p class="subtitle">Face-similarity search against the local performer photo DB, directory browsing, and a crawler to grow the DB.</p>
+<div class="hero compact mb-4">
+    <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Intelligence &amp; Performer Database</h1>
+    <p class="subtitle text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Local biometric face matching, OnlyFans &amp; star discovery, and video intelligence explorer.</p>
 </div>
 
-<div class="status-bar" id="perf-status">
-    <span class="muted">Loading status…</span>
-</div>
+<div class="dir-layout-container mb-6">
+    
+    <!-- SMALL BOX: CONTROLS, DATABASE UPDATER & FILTERS -->
+    <aside class="dir-sidebar-box">
+        
+        <!-- Database Live Updater Card -->
+        <div class="crawler-control-card">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="database" class="w-4 h-4 text-indigo-500"></i>
+                    <h4 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Database Sync</h4>
+                </div>
+                <span id="crawler-state-badge" class="badge-tag" style="display: none;">Idle</span>
+            </div>
 
-<div class="tabs">
-    <button class="tab active" data-tab="face">Face Similarity Search</button>
-    <button class="tab" data-tab="browse">Directory</button>
-    <button class="tab" data-tab="crawl">Crawler</button>
-</div>
+            <div class="space-y-2 mt-1">
+                <div>
+                    <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Target Category</label>
+                    <select id="crawl-category-select" class="input-text text-xs py-1.5 w-full">
+                        <option value="OnlyFans Star">✨ OnlyFans Stars</option>
+                        <option value="New Star">🌟 New Stars (18-24)</option>
+                        <option value="Top Star">🏆 Top Performing Stars</option>
+                    </select>
+                </div>
 
-<!-- ── Face search pane ───────────────────────────────────── -->
-<div class="tab-pane active" id="pane-face">
-    <div class="face-panel">
-        <form id="face-form">
-            <input type="file" name="file" id="face-file" accept="image/*" required>
-            <button type="submit" class="primary">Find Similar Faces</button>
-        </form>
-        <div id="face-uploading" class="hidden muted">Uploading &amp; matching… (first run builds the embedding index, may take ~1 min)</div>
-    </div>
-    <div id="face-results" class="image-gallery"></div>
-</div>
+                <div>
+                    <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Batch Count</label>
+                    <select id="crawl-count-input" class="input-text text-xs py-1.5 w-full">
+                        <option value="50">50 Models</option>
+                        <option value="150" selected>150 Models</option>
+                        <option value="500">500 Models</option>
+                        <option value="1000">1,000 Models (Deep Crawl)</option>
+                    </select>
+                </div>
 
-<!-- ── Directory pane ─────────────────────────────────────── -->
-<div class="tab-pane" id="pane-browse">
-    <div class="filters">
-        <input type="text" id="dir-q" class="filter-input" placeholder="Search name…" autocomplete="off">
-        <select id="dir-gender" class="filter-input">
-            <option value="">Any gender</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-        </select>
-        <select id="dir-sort" class="filter-input">
-            <option value="views">Sort: Views</option>
-            <option value="videos">Sort: Videos</option>
-            <option value="name">Sort: Name</option>
-        </select>
-        <button class="btn-link" id="dir-search">Search</button>
-    </div>
-    <table class="history-table" id="dir-table">
-        <thead><tr><th>#</th><th>Name</th><th>Videos</th><th>Views</th><th>Photo</th></tr></thead>
-        <tbody></tbody>
-    </table>
-    <div class="dir-more">
-        <button class="btn-link" id="dir-more">Load more</button>
-    </div>
-</div>
+                <button class="btn-primary w-full py-2 px-3 text-xs justify-center font-semibold mt-2" id="btn-start-creator-crawl">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Update Database</span>
+                </button>
+            </div>
 
-<!-- ── Crawler pane ───────────────────────────────────────── -->
-<div class="tab-pane" id="pane-crawl">
-    <div class="crawl-panel">
-        <form id="crawl-form">
-            <label class="opt"><span>Max performers</span>
-                <input type="number" name="max_performers" value="100" min="1" max="5000">
-            </label>
-            <label class="opt"><span>Directory pages</span>
-                <input type="number" name="pages" value="6" min="1" max="100">
-            </label>
-            <label class="opt"><span>Gender</span>
-                <select name="gender">
-                    <option value="female">Female</option>
-                    <option value="male">Male</option>
-                    <option value="m2f">M2F</option>
-                    <option value="f2m">F2M</option>
+            <!-- Live Progress & Telemetry Box -->
+            <div id="crawler-telemetry-panel" class="crawler-telemetry-box mt-2" style="display: none;">
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-zinc-400">Progress:</span>
+                    <span id="crawler-progress-counter" class="font-bold text-zinc-900 dark:text-white">0 / 0 (0%)</span>
+                </div>
+
+                <div class="telemetry-progress-track">
+                    <div id="crawler-progress-fill" class="telemetry-progress-fill"></div>
+                </div>
+
+                <div id="crawler-status-msg" class="text-[11px] text-zinc-500 dark:text-zinc-400 truncate" title="Crawler status">
+                    Initializing sync...
+                </div>
+
+                <!-- Pause & Stop Interactive Controls -->
+                <div class="flex gap-2 mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                    <button id="btn-crawler-pause" class="btn-ctrl-pause flex-1 justify-center">
+                        <i data-lucide="pause" class="w-3.5 h-3.5"></i>
+                        <span>Pause</span>
+                    </button>
+                    <button id="btn-crawler-stop" class="btn-ctrl-stop flex-1 justify-center">
+                        <i data-lucide="square" class="w-3.5 h-3.5"></i>
+                        <span>Stop</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Box -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4 text-indigo-500"></i>
+                    <h4 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Search &amp; Filters</h4>
+                </div>
+                <button id="btn-reset-filters" class="text-[11px] text-zinc-500 hover:text-indigo-500 font-medium">Reset</button>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Search Performer / Star</label>
+                <input type="text" id="dir-search-input" class="input-text text-xs py-1.5 w-full" placeholder="Search name or alias..." autocomplete="off">
+            </div>
+
+            <div>
+                <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Category</label>
+                <select id="dir-category-select" class="input-text text-xs py-1.5 w-full">
+                    <option value="">All Categories</option>
+                    <option value="OnlyFans Star">✨ OnlyFans Star</option>
+                    <option value="New Star">🌟 New Star (18-24)</option>
+                    <option value="Top Star">🏆 Top Star</option>
                 </select>
-            </label>
-            <button type="submit" class="primary">Download #Images &amp; Names</button>
-        </form>
-        <div id="crawl-progress" class="muted"></div>
-    </div>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Country / Origin</label>
+                <select id="dir-country-select" class="input-text text-xs py-1.5 w-full">
+                    <option value="">All Countries</option>
+                    <option value="United States">🇺🇸 United States</option>
+                    <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                    <option value="Canada">🇨🇦 Canada</option>
+                    <option value="Australia">🇦🇺 Australia</option>
+                    <option value="France">🇫🇷 France</option>
+                    <option value="Germany">🇩🇪 Germany</option>
+                    <option value="Spain">🇪🇸 Spain</option>
+                    <option value="Italy">🇮🇹 Italy</option>
+                    <option value="Brazil">🇧🇷 Brazil</option>
+                    <option value="Colombia">🇨🇴 Colombia</option>
+                    <option value="Russia">🇷🇺 Russia</option>
+                    <option value="Ukraine">🇺🇦 Ukraine</option>
+                    <option value="Japan">🇯🇵 Japan</option>
+                    <option value="Czech Republic">🇨🇿 Czech Republic</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Age Range</label>
+                <div class="flex gap-2 items-center">
+                    <input type="number" id="dir-age-min" class="input-text text-xs py-1.5 w-full" placeholder="Min (18)" min="18" max="99">
+                    <span class="text-zinc-400 text-xs">-</span>
+                    <input type="number" id="dir-age-max" class="input-text text-xs py-1.5 w-full" placeholder="Max" min="18" max="99">
+                </div>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Sort Order</label>
+                <select id="dir-sort-select" class="input-text text-xs py-1.5 w-full">
+                    <option value="has_photo" selected>🖼️ With Photos First</option>
+                    <option value="views">🔥 Most Views</option>
+                    <option value="videos">🎬 Most Videos</option>
+                    <option value="age">🎂 Youngest Age</option>
+                    <option value="name">🔤 Alphabetical (A-Z)</option>
+                </select>
+            </div>
+
+            <div class="pt-1">
+                <label class="chip w-full justify-center m-0 py-2 cursor-pointer" id="chip-has-photo">
+                    <input type="checkbox" id="dir-has-photo-cb">
+                    <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                    <span>Photos Only</span>
+                </label>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- LARGE BOX: PERFORMER & CREATOR MODELS SHOWCASE -->
+    <main class="dir-main-box">
+        
+        <!-- Top Bar with Stats & Mini Pagination -->
+        <div class="dir-header-bar">
+            <div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="users" class="w-4 h-4 text-indigo-500"></i>
+                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Performer &amp; Creator Directory</h3>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <span id="dir-total-count" class="status-pill text-xs">Loading records...</span>
+                    <span id="dir-photos-count" class="status-pill text-xs">0 photos</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span id="dir-page-indicator-top" class="text-xs text-zinc-500 font-mono">Page 1</span>
+                <button class="btn-page-nav" id="btn-page-prev-top" title="Previous Page">
+                    <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                </button>
+                <button class="btn-page-nav" id="btn-page-next-top" title="Next Page">
+                    <span>Next</span>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Models Grid -->
+        <div id="directory-grid" class="visual-grid"></div>
+
+        <!-- Infinite Scroll Loader Sentinel -->
+        <div id="dir-scroll-sentinel" class="dir-scroll-sentinel">
+            <span id="dir-scroll-text" class="text-xs text-zinc-500 flex items-center gap-2">
+                <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Scroll down to load more models...
+            </span>
+        </div>
+
+        <!-- Bottom Pagination Bar -->
+        <div class="dir-pagination-bar">
+            <div class="text-xs text-zinc-500" id="dir-showing-range">
+                Showing models...
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button class="btn-page-nav" id="btn-page-first" title="First Page">
+                    <i data-lucide="chevrons-left" class="w-3.5 h-3.5"></i>
+                    <span>First</span>
+                </button>
+                <button class="btn-page-nav" id="btn-page-prev">
+                    <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                    <span>Previous</span>
+                </button>
+                <span id="dir-page-indicator" class="text-xs font-mono font-medium px-2 text-zinc-900 dark:text-white">Page 1</span>
+                <button class="btn-page-nav" id="btn-page-next">
+                    <span>Next Page</span>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+
+    </main>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // tabs
-    document.querySelectorAll('.tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            document.getElementById('pane-' + btn.dataset.tab).classList.add('active');
-            if (btn.dataset.tab === 'browse') refreshDirectory();
-        });
-    });
-
-    // status
-    function refreshStatus() {
-        fetch('/api/performers/status').then(r => r.json()).then(d => {
-            const c = d.count, ph = d.photos, idx = d.face_index;
-            const st = document.getElementById('perf-status');
-            st.innerHTML = '<span class="muted">' +
-                '<strong class="text">' + c + '</strong> performers · ' +
-                '<strong>' + ph + '</strong> photos · ' +
-                (idx ? '<span class="status-pill done">face index ready</span>' : '<span class="status-pill queued">face index not built</span>') +
-                ' · crawl: <strong>' + (d.crawl ? d.crawl.state : 'idle') + '</strong></span>';
-        }).catch(() => {});
-    }
-    refreshStatus();
-
-    // face search
-    const faceForm = document.getElementById('face-form');
-    faceForm.addEventListener('submit', async function (evt) {
-        evt.preventDefault();
-        const fileInput = document.getElementById('face-file');
-        if (!fileInput.files.length) return;
-        const uploading = document.getElementById('face-uploading');
-        uploading.classList.remove('hidden');
-        const res = document.getElementById('face-results');
-        res.innerHTML = '';
-        const fd = new FormData();
-        fd.append('file', fileInput.files[0]);
-        fd.append('top_k', '8');
-        try {
-            const r = await fetch('/api/performers/face', { method: 'POST', body: fd });
-            const data = await r.json();
-            if (data.error) { res.innerHTML = '<p class="muted">Error: ' + esc(data.error) + '</p>'; return; }
-            if (!data.results || !data.results.length) {
-                res.innerHTML = '<p class="muted">No matching faces found (photo too small / no clear face?).</p>';
-                return;
-            }
-            data.results.forEach(m => {
-                const cell = el('a', 'image-cell');
-                cell.href = '/performers/photo/' + encodeURIComponent(m.photo || '');
-                cell.target = '_blank';
-                const img = document.createElement('img');
-                img.src = '/performers/photo/' + encodeURIComponent(m.photo || '');
-                img.alt = m.name;
-                img.loading = 'lazy';
-                cell.appendChild(img);
-                const cap = el('div', 'image-cap', m.name + ' · ' + m.similarity + ' sim · ' + m.videos + ' vids');
-                const url = m.url ? ' · <a href="' + esc(m.url) + '" target="_blank">profile</a>' : '';
-                cap.innerHTML += url;
-                cell.appendChild(cap);
-                res.appendChild(cell);
-            });
-        } catch (e) {
-            res.innerHTML = '<p class="muted">Error: ' + esc(String(e)) + '</p>';
-        } finally {
-            uploading.classList.add('hidden');
-        }
-    });
-
-    // directory
-    let dirOffset = 0;
-    function refreshDirectory() {
-        const q = document.getElementById('dir-q').value;
-        const gender = document.getElementById('dir-gender').value;
-        const sort = document.getElementById('dir-sort').value;
-        fetch('/api/performers/browse?q=' + encodeURIComponent(q) +
-              '&gender=' + encodeURIComponent(gender) +
-              '&sort=' + encodeURIComponent(sort) +
-              '&limit=50&offset=' + dirOffset)
-            .then(r => r.json()).then(data => {
-                const tbody = document.querySelector('#dir-table tbody');
-                if (dirOffset === 0) tbody.innerHTML = '';
-                data.results.forEach((p, i) => {
-                    const tr = document.createElement('tr');
-                    tr.appendChild(el('td', '', String(dirOffset + i + 1)));
-                    const tdN = document.createElement('td');
-                    tdN.textContent = p.name;
-                    if (p.url) {
-                        const a = el('a', ' muted', ' ↗'); a.href = p.url; a.target = '_blank';
-                        tdN.appendChild(a);
-                    }
-                    tr.appendChild(tdN);
-                    tr.appendChild(el('td', '', String(p.videos)));
-                    tr.appendChild(el('td', '', p.views.toLocaleString()));
-                    const tdP = document.createElement('td');
-                    if (p.photo) {
-                        const a = el('a', '', 'view'); a.href = '/performers/photo/' + encodeURIComponent(p.photo); a.target = '_blank';
-                        tdP.appendChild(a);
-                    } else { tdP.textContent = '—'; }
-                    tr.appendChild(tdP);
-                    tbody.appendChild(tr);
-                });
-            }).catch(() => {});
-    }
-    document.getElementById('dir-search').addEventListener('click', () => { dirOffset = 0; refreshDirectory(); });
-    document.getElementById('dir-more').addEventListener('click', () => {
-        dirOffset += 50; refreshDirectory();
-    });
-    ['dir-q', 'dir-gender', 'dir-sort'].forEach(id => {
-        document.getElementById(id).addEventListener('change', () => { dirOffset = 0; refreshDirectory(); });
-    });
-
-    // crawler
-    const crawlForm = document.getElementById('crawl-form');
-    crawlForm.addEventListener('submit', async function (evt) {
-        evt.preventDefault();
-        const progress = document.getElementById('crawl-progress');
-        progress.textContent = 'Starting crawl… watch the status bar.';
-        const fd = new FormData(crawlForm);
-        try {
-            const r = await fetch('/api/performers/crawl', { method: 'POST', body: fd });
-            const data = await r.json();
-            progress.textContent = data.error ? ('Error: ' + data.error) : 'Crawl started in background.';
-            if (data.state === 'running') pollUntilDone();
-        } catch (e) {
-            progress.textContent = 'Error: ' + String(e);
-        }
-    });
-
-    function pollUntilDone() {
-        const t = setInterval(function () {
-            fetch('/api/performers/status').then(r => r.json()).then(d => {
-                refreshStatus();
-                const s = d.crawl ? d.crawl.state : 'idle';
-                if (s === 'running' || s === 'done') {
-                    document.getElementById('crawl-progress').textContent =
-                        (s === 'done' ? 'Done — ' : 'Crawling… ') + 'collected ' + (d.crawl.collected || 0) + ' performers so far.';
-                }
-                if (s === 'done') {
-                    clearInterval(t);
-                    document.getElementById('crawl-progress').textContent =
-                        'Done. Collected ' + d.crawl.collected + ' performers. Face index rebuilt.';
-                }
-                if (s === 'idle' && d.crawl.error) {
-                    clearInterval(t);
-                    document.getElementById('crawl-progress').textContent = 'Crawl error: ' + d.crawl.error;
-                }
-            }).catch(() => {});
-        }, 3000);
-    }
+document.addEventListener('DOMContentLoaded', () => {
+    initDirectory();
+    initModal();
+    loadDirectory();
+    renderIcons();
 });
 </script>
 {% endblock %}

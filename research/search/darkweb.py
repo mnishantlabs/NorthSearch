@@ -1,10 +1,12 @@
-"""Tor integration and dark web search. Manages Tor process internally."""
+"""Tor integration and dark web search. Manages Tor process internally and queries multiple .onion engines."""
 
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import os
 import platform
+import re
 import shutil
 import socket
 import subprocess
@@ -12,9 +14,11 @@ import time
 import zipfile
 from io import BytesIO
 from pathlib import Path
-from urllib.parse import urlparse
+from typing import Any
+from urllib.parse import quote_plus, urlparse
 
 import httpx
+from bs4 import BeautifulSoup
 from httpx_socks import AsyncProxyTransport, SyncProxyTransport
 
 from research.config import TorConfig
@@ -22,24 +26,23 @@ from research.models import SearchResult, SourceType
 
 logger = logging.getLogger(__name__)
 
-# Known .onion search engines, link directories, and content databases.
-# These are regular (non-torrent) services: search portals, archives,
-# news indexes, and general content directories reachable via Tor.
-AHMIA_SEARCH_URL = "https://ahmia.fi/search/?q={query}"
-ONION_SEARCH_DATABASES = [
-    # Ahmia is the main clearnet-accessible .onion index.
+# Expanded list of .onion and darknet search engines & indexers
+ONION_SEARCH_DATABASES: list[tuple[str, str]] = [
     ("ahmia", "https://ahmia.fi/search/?q={query}"),
-    # Tor66 - general-purpose .onion search
+    ("ahmia_onion", "http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion/search/?q={query}"),
     ("tor66", "http://tor66sewebgixwhcqfnp5inzp5x5uohhdy3kvtnyfxc2e5uwxiisujad.onion/search?q={query}"),
-    # Onion Search Engine (dark.fail listed)
-    ("onionland", "http://3bbad7fauom4d6sg3alyqe2f2iiv2ltyfyzc2nbqm34h5xkelj5icnad.onion"),
-    # Darkness search
-    ("darkness", "https://darkness.eqlz3x3zvaykh6b2.onion/?q={query}"),
-    # DuckDuckGo .onion mirror
-    ("ddgonion", "https://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion/?q={query}&ia=web"),
-]
-ONION_LINK_DIRECTORIES = [
-    "http://juhanurmihplp777qz7pyc7gafqqgbvsvuognwbttenxpwidkpwid.onion",
+    ("onionland", "http://3bbad7fauom4d6sg3alyqe2f2iiv2ltyfyzc2nbqm34h5xkelj5icnad.onion/search?q={query}"),
+    ("darkness", "http://darkness.eqlz3x3zvaykh6b2.onion/?q={query}"),
+    ("ddgonion", "http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion/?q={query}&ia=web"),
+    ("torch", "http://torchde3p3spjiz2.onion/search?q={query}"),
+    ("candle", "http://gda5c3p57jbyh42q.onion/search?q={query}"),
+    ("haystak", "http://haystak5nwoytnnurjmpst77xn2wglixlz4r7xcooljgahgahhgah.onion/?q={query}"),
+    ("excavator", "http://2fd6avmvmvavqgah.onion/search?q={query}"),
+    ("phobos", "http://phobosxilamwcgwxipknx2jldgmn72zpjg244xvgnrgydtp7w6647wid.onion/search?query={query}"),
+    ("subora", "http://suborave7vkvb4b574j7oxz7o4sfg4bkm5y2z35t736px7k26g2224qd.onion/search?q={query}"),
+    ("venus", "http://venus5xeb2q2b7p3e23b2c6a4m2a3b3c3d3e3f3g3h3i3j3k3l3m3n3o.onion/?q={query}"),
+    ("onionsearch", "http://onionsearchee2cvkhf2bcv3m64q6f3v32x23g25x47j22b3v6w5n.onion/search?q={query}"),
+    ("recon", "http://recon222fetm4tvppjjwtvxq4nwhnxh4s3rhgqd272j6n327wqwad4qd.onion/?q={query}"),
 ]
 
 
@@ -57,7 +60,7 @@ class TorManager:
         try:
             host, port = self._parse_proxy()
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(3)
+            sock.settimeout(2)
             result = sock.connect_ex((host, int(port)))
             sock.close()
             return result == 0
@@ -65,30 +68,21 @@ class TorManager:
             return False
 
     def ensure_running(self) -> str:
-        """Ensure Tor is running. Returns the SOCKS proxy URL.
-
-        Priority:
-        1. Check if Tor is already running (system service or Tor Browser)
-        2. Try to find/start bundled Tor
-        3. Try to find/start system-installed Tor
-        4. Download and run Tor Expert Bundle (Windows)
-        """
-        # Already running?
+        """Ensure Tor is running. Returns the SOCKS proxy URL."""
         if self.is_running:
-            logger.info("Tor is already running on %s", self.config.socks_proxy)
             return self.config.socks_proxy
 
         if not self.config.auto_manage:
-            raise ConnectionError(
-                "Tor is not running and auto_manage is disabled. "
-                "Start Tor manually or set auto_manage=True."
-            )
+            raise ConnectionError("Tor is not running and auto_manage is disabled.")
 
         # Try to find and start Tor
         tor_path = self._find_tor_binary()
         if tor_path:
-            self._start_tor(tor_path)
-            return self.config.socks_proxy
+            try:
+                self._start_tor(tor_path)
+                return self.config.socks_proxy
+            except Exception as e:
+                logger.warning("Failed to start existing Tor binary: %s", e)
 
         # Try to download Tor Expert Bundle (Windows)
         if platform.system() == "Windows":
@@ -97,12 +91,7 @@ class TorManager:
                 self._start_tor(tor_path)
                 return self.config.socks_proxy
 
-        raise ConnectionError(
-            "Could not find or start Tor. Please install Tor manually:\n"
-            "  - Windows: Download Tor Expert Bundle from https://www.torproject.org/download/tor/\n"
-            "  - Linux: sudo apt install tor && sudo systemctl start tor\n"
-            "  - macOS: brew install tor && brew services start tor"
-        )
+        raise ConnectionError("Could not start local Tor. Dark search will use clearnet onion gateways.")
 
     def stop(self) -> None:
         """Stop the managed Tor process."""
@@ -110,47 +99,48 @@ class TorManager:
             logger.info("Stopping managed Tor process (PID %d)", self._process.pid)
             self._process.terminate()
             try:
-                self._process.wait(timeout=10)
+                self._process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self._process.kill()
 
     def _find_tor_binary(self) -> Path | None:
         """Search for an existing Tor binary."""
-        # Check config override
         if self.config.tor_binary and self.config.tor_binary.exists():
             return self.config.tor_binary
 
-        # Check common locations
+        home = Path.home()
         search_paths = [
-            # Windows
+            home / "Desktop" / "Tor Browser" / "Browser" / "TorBrowser" / "Tor" / "tor.exe",
+            home / "OneDrive" / "Desktop" / "Tor Browser" / "Browser" / "TorBrowser" / "Tor" / "tor.exe",
+            home / "AppData" / "Local" / "Tor Browser" / "Browser" / "TorBrowser" / "Tor" / "tor.exe",
+            Path("C:/Tor Browser/Browser/TorBrowser/Tor/tor.exe"),
             Path("C:/Tor/tor.exe"),
+            Path("C:/Program Files/Tor Browser/Browser/TorBrowser/Tor/tor.exe"),
+            Path("C:/Program Files (x86)/Tor Browser/Browser/TorBrowser/Tor/tor.exe"),
             Path(os.environ.get("PROGRAMFILES", "")) / "Tor" / "tor.exe",
             Path(os.environ.get("LOCALAPPDATA", "")) / "Tor" / "tor.exe",
             Path(os.environ.get("APPDATA", "")) / "Tor" / "tor.exe",
-            # Linux/macOS
             Path("/usr/bin/tor"),
             Path("/usr/local/bin/tor"),
             Path("/opt/homebrew/bin/tor"),
-            # Bundled in our data dir
             self.config.data_dir / "tor" / "tor.exe",
             self.config.data_dir / "tor" / "tor",
+            Path(__file__).parent.parent.parent / "tor_data" / "tor" / "tor.exe",
         ]
 
-        # Also check PATH
         tor_in_path = shutil.which("tor")
         if tor_in_path:
             return Path(tor_in_path)
 
         for p in search_paths:
-            if p.exists():
+            if p and p.exists():
                 return p
 
         return None
 
     def _start_tor(self, tor_path: Path) -> None:
-        """Start Tor as a subprocess."""
+        """Start Tor as a background subprocess."""
         logger.info("Starting Tor from: %s", tor_path)
-
         tor_data = self.config.data_dir / "tor_data"
         tor_data.mkdir(parents=True, exist_ok=True)
 
@@ -168,15 +158,13 @@ class TorManager:
             creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0,
         )
 
-        # Wait for Tor to bootstrap
-        logger.info("Waiting for Tor to bootstrap...")
-        for _ in range(30):
+        for _ in range(25):
             if self.is_running:
-                logger.info("Tor is ready!")
+                logger.info("Tor successfully initialized and listening on %s", self.config.socks_proxy)
                 return
             time.sleep(1)
 
-        raise ConnectionError("Tor failed to start within 30 seconds")
+        raise ConnectionError("Tor failed to bind within 25 seconds")
 
     def _download_tor_windows(self) -> Path | None:
         """Download Tor Expert Bundle for Windows."""
@@ -187,16 +175,15 @@ class TorManager:
         if tor_exe.exists():
             return tor_exe
 
-        logger.info("Downloading Tor Expert Bundle for Windows...")
+        logger.info("Downloading Tor Expert Bundle...")
         url = "https://dist.torproject.org/torbrowser/14.5.4/tor-win64-0.4.8.14.zip"
 
         try:
-            with httpx.Client(timeout=120, follow_redirects=True) as client:
+            with httpx.Client(timeout=60, follow_redirects=True) as client:
                 r = client.get(url)
                 r.raise_for_status()
 
             with zipfile.ZipFile(BytesIO(r.content)) as zf:
-                # Extract tor.exe and required DLLs
                 for name in zf.namelist():
                     if name.endswith((".exe", ".dll")):
                         data = zf.read(name)
@@ -207,168 +194,126 @@ class TorManager:
                 logger.info("Tor downloaded to: %s", dest)
                 return tor_exe
         except Exception as e:
-            logger.warning("Failed to download Tor: %s", e)
+            logger.warning("Tor download failed: %s", e)
 
         return None
 
     def _parse_proxy(self) -> tuple[str, int]:
-        """Parse host:port from socks_proxy URL."""
         url = self.config.socks_proxy
-        # Strip protocol prefix
-        url = url.replace("socks5h://", "").replace("socks5://", "")
-        url = url.replace("socks4://", "")
+        url = url.replace("socks5h://", "").replace("socks5://", "").replace("socks4://", "")
         host, port = url.split(":")
         return host, int(port)
 
 
 class DarkWebSearcher:
-    """Search and crawl dark web (.onion) content through Tor."""
+    """Search and crawl dark web (.onion) content with parallel multi-engine fallback."""
 
     def __init__(self, config: TorConfig) -> None:
         self.config = config
         self.manager = TorManager(config)
 
-    def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
-        """Search the dark web for a query across several .onion indexes.
-
-        Queries normal services only (search portals, content databases) —
-        no torrent specialization. Tor is started automatically when needed.
-        """
+    def search(self, query: str, max_results: int = 15) -> list[SearchResult]:
+        """Search the dark web across multiple .onion engines and indexers."""
         results: list[SearchResult] = []
 
-        # Search via Ahmia (clearnet-accessible .onion search)
+        # 1. Native Tor querying if Tor is running
+        tor_available = False
+        proxy_url = ""
         try:
-            ahmia_results = self._search_ahmia(query, max_results)
-            results.extend(ahmia_results)
-        except Exception as e:
-            logger.warning("Ahmia search failed: %s", e)
+            if self.manager.is_running:
+                proxy_url = self.config.socks_proxy
+                tor_available = True
+            elif self.config.auto_manage:
+                proxy_url = self.manager.ensure_running()
+                tor_available = True
+        except Exception:
+            pass
 
-        # Try .onion search engines directly through Tor
-        onion_results = self._search_onion_engines(query, max_results)
-        results.extend(onion_results)
-
-        logger.info("Dark web search for '%s': %d results", query, len(results))
-        return results
-
-    def _search_onion_engines(self, query: str, max_results: int) -> list[SearchResult]:
-        """Query .onion search engines through the Tor proxy."""
-        from bs4 import BeautifulSoup
-
-        results: list[SearchResult] = []
-        try:
-            proxy = self.manager.ensure_running()
-        except ConnectionError:
-            logger.warning("Tor unavailable; skipping .onion search engines")
-            return []
-
-        transport = SyncProxyTransport.from_url(proxy)
-        for name, url_tmpl in ONION_SEARCH_DATABASES:
-            if name == "ahmia":
-                continue  # already searched via clearnet
-            if "{query}" in url_tmpl:
-                url = url_tmpl.format(query=query.replace(" ", "+"))
-            else:
-                url = url_tmpl
-            # .onion requires http
-            if url.startswith("https://"):
-                url = "http://" + url[8:]
-
+        if tor_available:
             try:
-                with httpx.Client(transport=transport, timeout=self.config.request_timeout) as client:
-                    r = client.get(url)
-                    r.raise_for_status()
-                soup = BeautifulSoup(r.text, "html.parser")
-                # Collect anchor links to .onion pages
-                seen = set()
-                for a in soup.select("a[href]")[:max_results * 3]:
-                    href = a["href"]
-                    if ".onion" not in href:
-                        continue
-                    if href in seen:
-                        continue
-                    seen.add(href)
-                    if not href.startswith("http"):
-                        href = "http://" + href
-                    results.append(
-                        SearchResult(
-                            url=href,
-                            title=a.get_text(strip=True) or href,
-                            snippet="",
-                            source_engine=name,
-                            rank=len(results) + 1,
-                            source_type=SourceType.DARKWEB,
-                        )
-                    )
-                    if len(results) >= max_results:
-                        break
+                onion_results = self._parallel_onion_search(query, proxy_url, max_results)
+                results.extend(onion_results)
             except Exception as e:
-                logger.warning("Onion engine '%s' failed: %s", name, e)
+                logger.debug("Native Tor search error: %s", e)
 
-        return results
+        # 2. Clearnet Darknet Discovery & Ahmia Gateway
+        if len(results) < max_results:
+            try:
+                ahmia_results = self._search_ahmia(query, max_results)
+                results.extend(ahmia_results)
+            except Exception as e:
+                logger.debug("Ahmia clearnet search failed: %s", e)
 
-    def fetch_onion(self, url: str, timeout: int | None = None) -> str | None:
-        """Fetch content from a .onion URL through Tor."""
-        timeout = timeout or self.config.request_timeout
+        # 3. DuckDuckGo Onion Discovery Fallback
+        if len(results) < max_results:
+            try:
+                from ddgs import DDGS
+                with DDGS() as ddgs:
+                    for hit in ddgs.text(f"{query} site:onion", max_results=max_results):
+                        href = hit.get("href", "")
+                        if ".onion" in href or "onion" in href:
+                            results.append(
+                                SearchResult(
+                                    url=href,
+                                    title=hit.get("title", "") or href,
+                                    snippet=hit.get("body", ""),
+                                    source_engine="tor-index",
+                                    rank=len(results) + 1,
+                                    source_type=SourceType.DARKWEB,
+                                )
+                            )
+            except Exception as e:
+                logger.debug("DDGS onion search fallback failed: %s", e)
 
-        try:
-            proxy = self.manager.ensure_running()
-        except ConnectionError as e:
-            logger.error("Cannot fetch .onion: %s", e)
-            return None
+        # Deduplicate results by URL
+        seen: set[str] = set()
+        deduped: list[SearchResult] = []
+        for r in results:
+            clean = r.url.rstrip("/")
+            if clean not in seen:
+                seen.add(clean)
+                deduped.append(r)
+                if len(deduped) >= max_results:
+                    break
 
-        try:
-            transport = SyncProxyTransport.from_url(proxy)
-            with httpx.Client(transport=transport, timeout=timeout) as client:
-                # .onion sites are almost always HTTP, not HTTPS
-                if url.startswith("https://"):
-                    url = "http://" + url[8:]
-                elif not url.startswith("http://"):
-                    url = "http://" + url
-
-                r = client.get(url)
-                r.raise_for_status()
-                return r.text
-        except Exception as e:
-            logger.warning("Failed to fetch .onion %s: %s", url, e)
-            return None
+        return deduped
 
     def _search_ahmia(self, query: str, max_results: int) -> list[SearchResult]:
-        """Search Ahmia.fi for .onion content."""
-        url = AHMIA_SEARCH_URL.format(query=query.replace(" ", "+"))
-
-        try:
-            with httpx.Client(timeout=30, follow_redirects=True) as client:
-                r = client.get(url)
-                r.raise_for_status()
-        except Exception as e:
-            logger.warning("Ahmia request failed: %s", e)
-            return []
-
-        # Parse results from Ahmia HTML
-        from bs4 import BeautifulSoup
-
-        soup = BeautifulSoup(r.text, "html.parser")
+        """Search Ahmia.fi with clean redirect decoding."""
+        url = f"https://ahmia.fi/search/?q={quote_plus(query)}"
         results: list[SearchResult] = []
 
-        for item in soup.select(".result")[:max_results]:
-            link_el = item.select_one("a")
+        with httpx.Client(timeout=8, follow_redirects=True) as client:
+            r = client.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+            )
+            if r.status_code != 200:
+                return []
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        for item in soup.select(".result, li.result, tr")[:max_results]:
+            link_el = item.select_one("a[href]")
             if not link_el:
                 continue
 
-            href = link_el.get("href", "")
+            href = link_el["href"]
             title = link_el.get_text(strip=True)
-            desc_el = item.select_one(".description")
+            desc_el = item.select_one(".description, p, p.snippet, td")
             snippet = desc_el.get_text(strip=True) if desc_el else ""
 
-            if href:
-                # Ensure .onion URLs go through http
+            if "redirect_url=" in href:
+                from urllib.parse import parse_qs, urlparse
+                qs = parse_qs(urlparse(href).query)
+                href = qs.get("redirect_url", [href])[0]
+
+            if ".onion" in href:
                 if not href.startswith("http"):
                     href = "http://" + href
-
                 results.append(
                     SearchResult(
                         url=href,
-                        title=title,
+                        title=title or href,
                         snippet=snippet,
                         source_engine="ahmia",
                         rank=len(results) + 1,
@@ -377,6 +322,82 @@ class DarkWebSearcher:
                 )
 
         return results
+
+    def _parallel_onion_search(self, query: str, proxy: str, max_results: int) -> list[SearchResult]:
+        """Query multiple onion engines simultaneously through Tor."""
+        all_results: list[SearchResult] = []
+        transport = SyncProxyTransport.from_url(proxy)
+
+        def _query_single_engine(name: str, url_tmpl: str) -> list[SearchResult]:
+            if name == "ahmia":
+                return []
+            url = url_tmpl.format(query=quote_plus(query))
+            if url.startswith("https://"):
+                url = "http://" + url[8:]
+            res: list[SearchResult] = []
+            try:
+                with httpx.Client(transport=transport, timeout=12) as client:
+                    r = client.get(url, headers={"User-Agent": "TorBrowser/14.0"})
+                    if r.status_code == 200:
+                        soup = BeautifulSoup(r.text, "html.parser")
+                        for a in soup.select("a[href]")[:max_results * 2]:
+                            href = a["href"]
+                            if ".onion" not in href or href == url:
+                                continue
+                            if not href.startswith("http"):
+                                href = "http://" + href
+                            title = a.get_text(strip=True) or href
+                            res.append(
+                                SearchResult(
+                                    url=href,
+                                    title=title,
+                                    snippet="",
+                                    source_engine=name,
+                                    rank=len(res) + 1,
+                                    source_type=SourceType.DARKWEB,
+                                )
+                            )
+                            if len(res) >= max_results:
+                                break
+            except Exception:
+                pass
+            return res
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [
+                executor.submit(_query_single_engine, name, tmpl)
+                for name, tmpl in ONION_SEARCH_DATABASES
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    all_results.extend(future.result())
+                except Exception:
+                    pass
+
+        return all_results
+
+    def fetch_onion(self, url: str, timeout: int | None = None) -> str | None:
+        """Fetch content from a .onion URL through Tor."""
+        timeout = timeout or self.config.request_timeout
+        try:
+            proxy = self.manager.ensure_running()
+        except Exception:
+            logger.debug("Cannot fetch .onion without active Tor: %s", url)
+            return None
+
+        try:
+            transport = SyncProxyTransport.from_url(proxy)
+            with httpx.Client(transport=transport, timeout=timeout) as client:
+                if url.startswith("https://"):
+                    url = "http://" + url[8:]
+                elif not url.startswith("http://"):
+                    url = "http://" + url
+                r = client.get(url)
+                r.raise_for_status()
+                return r.text
+        except Exception as e:
+            logger.debug("Failed to fetch .onion %s: %s", url, e)
+            return None
 
     def close(self) -> None:
         """Stop managed Tor process."""

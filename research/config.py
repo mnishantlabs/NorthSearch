@@ -75,6 +75,46 @@ class SearchConfig(BaseModel):
             "wikipedia.org",
         ]
     )
+    # Search mode: "normal" (all domains, default engines) or "adult"
+    # (adult-content friendly engines, government/academic domains excluded).
+    mode: str = Field(default_factory=lambda: os.getenv("SEARCH_MODE", "normal"))
+    # Darkweb mode: "normal" (clearnet only), "darknet_only" (Tor only), or "all" (hybrid)
+    darkweb_mode: str = Field(default_factory=lambda: os.getenv("DARKWEB_MODE", "normal"))
+    # Deep search: research more angles and extract more sources.
+    deep: bool = Field(
+        default_factory=lambda: os.getenv("DEEP_SEARCH", "false").lower() == "true"
+    )
+    # Engines used when mode == "adult" (SEARCH_ENGINES_ADULT override).
+    adult_engines: list[str] = Field(
+        default_factory=lambda: [
+            e.strip()
+            for e in os.getenv("SEARCH_ENGINES_ADULT", "yandex,duckduckgo,bunkr").split(",")
+            if e.strip()
+        ]
+    )
+    # Domains excluded when mode == "adult" — government, military, academic,
+    # medical-reference and encyclopedia sites. Each entry is a hostname or
+    # suffix (e.g. "nih.gov" blocks any *.nih.gov host).
+    adult_blocked_domains: list[str] = Field(
+        default_factory=lambda: [
+            ".gov",
+            ".mil",
+            ".edu",
+            "ncbi.nlm.nih.gov",
+            "pmc.ncbi.nlm.nih.gov",
+            "medlineplus.gov",
+            "nih.gov",
+            "cdc.gov",
+            "who.int",
+            "arxiv.org",
+            "scholar.google.com",
+            "springer.com",
+            "wikipedia.org",
+            "britannica.com",
+            "mayoclinic.org",
+            "webmd.com",
+        ]
+    )
 
 
 class ExtractionConfig(BaseModel):

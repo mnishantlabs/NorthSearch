@@ -42,7 +42,15 @@ def main(
     ),
     engines: str = typer.Option(
         None, "--engines", "-e",
-        help="Comma-separated search engines: duckduckgo,brave,bing,searxng",
+        help="Comma-separated search engines: duckduckgo,brave,bing,searxng,yandex",
+    ),
+    mode: str = typer.Option(
+        "normal", "--mode", "-M",
+        help="Search mode: normal | adult (adult switches engines to yandex/duckduckgo and skips gov/academic sites)",
+    ),
+    deep: bool = typer.Option(
+        False, "--deep", "-D",
+        help="Deep search: more sub-queries, more per-query results, more sources",
     ),
     verify: bool = typer.Option(
         True, "--verify/--no-verify", help="Verify pages contain the query before analysis"
@@ -104,6 +112,7 @@ def main(
             f"Query: [bold]{query}[/bold]\n"
             f"Dark web: {'[green]ON[/green]' if darkweb else '[dim]OFF[/dim]'}\n"
             f"Mode: {'[blue]images[/blue]' if images else '[green]text[/green]'}\n"
+            f"Search mode: [yellow]{mode.lower()}[/yellow]{' [blue](deep)[/blue]' if deep else ''}\n"
             f"Engines: {', '.join(config.search.engines)}",
             title="Starting Research",
             border_style="cyan",
@@ -139,6 +148,10 @@ def main(
             console.print("[red]No models available. Pull one with: ollama pull dolphin3:8b[/red]")
             raise typer.Exit(1)
     llm.close()
+
+    # Search mode + deep search
+    config.search.mode = mode.lower()
+    config.search.deep = deep
 
     # Run pipeline
     try:

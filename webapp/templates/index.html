@@ -1,95 +1,806 @@
 {% extends "base.html" %}
-{% block title %} — Search{% endblock %}
+{% block title %} — Intelligence Hub{% endblock %}
 {% block content %}
-<div class="hero">
-    <h1>Deep Research</h1>
-    <p class="subtitle">Enter any topic and let the AI search, scrape, and synthesize the web for you.</p>
 
-    <form id="research-form" hx-post="/api/research"
-          hx-target="#response" hx-swap="innerHTML"
-          hx-trigger="submit">
-        <input type="text" name="query" id="query"
-               placeholder="What do you want to research?..."
-               autocomplete="off" required>
-        <button type="submit" id="submit-btn" class="primary">Start Research</button>
-    </form>
-
-    <div class="mode-toggle">
-        <button type="button" class="mode-btn active" data-mode="research" onclick="setMode('research')">Research</button>
-        <button type="button" class="mode-btn" data-mode="images" onclick="setMode('images')">Images</button>
+<!-- Hero & Dynamic Operational Header -->
+<section class="text-center pt-1 pb-1" data-purpose="hero-title-section">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-white/10 text-xs font-mono mb-2 shadow-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-zinc-700 dark:text-zinc-300 font-medium">Neural Dispatcher Active</span>
+        <span class="text-zinc-400 dark:text-zinc-500">•</span>
+        <span class="text-indigo-600 dark:text-indigo-400 font-semibold" id="hero-node-status">26 Engines &amp; Tor Active</span>
     </div>
+    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-1.5 leading-tight">
+        NorthSearch Intelligence
+    </h1>
+    <p class="max-w-xl mx-auto text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-normal">
+        Deep multi-engine exploration, onion routing, and local synthesis in one unified workspace.
+    </p>
+</section>
 
-    <div class="options">
-        <details class="advanced">
-            <summary>Advanced options</summary>
-            <div class="option-grid">
-                <label class="opt">
-                    <span>Dark web search</span>
-                    <input type="checkbox" name="darkweb" id="darkweb">
-                    <small>Search .onion hidden services (requires Tor)</small>
-                </label>
-                <label class="opt">
-                    <span>Max sources</span>
-                    <input type="number" name="max_sources" id="max_sources" value="10" min="1" max="50">
-                    <small>How many pages to scrape</small>
-                </label>
-                <label class="opt">
-                    <span>Sub-queries</span>
-                    <input type="number" name="max_sub_queries" id="max_sub_queries" value="3" min="1" max="8">
-                    <small>How many angles to break the query into</small>
-                </label>
-                <label class="opt">
-                    <span>Model</span>
-                    <select name="model" id="model">
-                        <option value="dolphin3:8b" selected>dolphin3:8b</option>
-                    </select>
-                    <small>Local Ollama model</small>
-                </label>
+<!-- Sleek Modern Segmented Navigation Bar -->
+<nav aria-label="Operational views" class="w-full flex justify-center">
+    <div class="inline-flex items-center justify-between sm:justify-center p-1 rounded-2xl bg-zinc-100/90 dark:bg-zinc-900/80 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 gap-0.5 sm:gap-1 shadow-subtle max-w-full overflow-x-auto no-scrollbar" data-purpose="view-tabs">
+        <button class="tab-btn active flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all" data-tab="deep-research" type="button">
+            <i data-lucide="brain" class="w-4 h-4"></i>
+            <span>Deep Research</span>
+        </button>
+        <button class="tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all" data-tab="quick-search" type="button">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+            <span>Quick Search</span>
+        </button>
+        <button class="tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all" data-tab="visual-search" type="button">
+            <i data-lucide="image" class="w-4 h-4"></i>
+            <span>Visual Search</span>
+        </button>
+        <button class="tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all" data-tab="scraper" type="button">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+            <span>Scraper &amp; DB</span>
+        </button>
+        <button class="tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all" data-tab="directory" type="button">
+            <i data-lucide="database" class="w-4 h-4"></i>
+            <span>Local Database</span>
+        </button>
+        <button class="tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all" data-tab="diagnostics" type="button">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+            <span>Diagnostics</span>
+        </button>
+    </div>
+</nav>
+
+<!-- ================================================================= -->
+<!-- PANE 1: DEEP AI RESEARCH -->
+<!-- ================================================================= -->
+<div class="tab-pane" id="pane-deep-research" style="display: block;">
+    <article class="bg-white/90 dark:bg-zinc-900/60 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card relative" data-purpose="intelligence-card">
+        
+        <form id="deep-research-form" action="#" onsubmit="return false;">
+            <!-- Compact Search Bar Container -->
+            <div class="relative mb-3" data-purpose="search-input-group">
+                <div class="relative flex items-center">
+                    <div class="absolute left-4 pointer-events-none text-zinc-400">
+                        <i data-lucide="search" class="w-5 h-5 text-zinc-400"></i>
+                    </div>
+                    <input class="w-full pl-12 pr-48 py-3.5 bg-zinc-50 dark:bg-zinc-950/40 hover:bg-white dark:hover:bg-zinc-950/60 focus:bg-white dark:focus:bg-zinc-950/70 text-zinc-900 dark:text-white placeholder-zinc-400 rounded-xl border border-zinc-200 dark:border-white/10 focus:border-zinc-800 dark:focus:border-white/30 text-sm sm:text-base font-medium transition-all outline-none"
+                           name="query" id="deep-query" placeholder="Enter research topic, target alias, or investigation query..." required autocomplete="off">
+                    
+                    <div class="absolute right-2 flex items-center gap-2">
+                        <kbd class="hidden sm:inline-flex items-center px-2 py-1 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded shadow-xs">⌘K</kbd>
+                        <button type="submit" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 active:scale-[0.98] text-white dark:text-zinc-900 font-semibold text-xs sm:text-sm shadow-sm transition-all" id="deep-submit-btn">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            <span>Synthesize</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-        </details>
-    </div>
 
-    <div id="response"></div>
+            <!-- Compact Inline Controls Strip (Providers + Mode Switch + Settings Drawer Toggle) -->
+            <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+                <!-- Search Engines List with Explicit Toggles -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1 mr-1">
+                        <span class="text-[11px] font-mono font-bold uppercase text-zinc-400">Engines:</span>
+                        <button type="button" class="btn-all-engines-toggle text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 transition-colors" data-target="deep" data-action="all_on">All ON</button>
+                        <button type="button" class="btn-all-engines-toggle text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 transition-colors" data-target="deep" data-action="all_off">All OFF</button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5" id="deep-providers-list">
+                        <button type="button" class="engine-toggle active" data-engine="knowledge" data-scope="deep"><span class="engine-icon">🧠</span><span class="engine-name">Knowledge</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="duckduckgo" data-scope="deep"><span class="engine-icon">🦆</span><span class="engine-name">DuckDuckGo</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="bing" data-scope="deep"><span class="engine-icon">🔍</span><span class="engine-name">Bing</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="yahoo" data-scope="deep"><span class="engine-icon">🌐</span><span class="engine-name">Yahoo</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="wikipedia" data-scope="deep"><span class="engine-icon">📖</span><span class="engine-name">Wikipedia</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="brave" data-scope="deep"><span class="engine-icon">🦁</span><span class="engine-name">Brave</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="qwant" data-scope="deep"><span class="engine-icon">⚡</span><span class="engine-name">Qwant</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="mojeek" data-scope="deep"><span class="engine-icon">🔎</span><span class="engine-name">Mojeek</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle" data-engine="bunkr" data-scope="deep"><span class="engine-icon">📦</span><span class="engine-name">Bunkr</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">OFF</span></button>
+                        <button type="button" class="engine-toggle" data-engine="searxng" data-scope="deep"><span class="engine-icon">🌌</span><span class="engine-name">SearXNG</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">OFF</span></button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <!-- 3-Way Search Mode Selector (Normal Web / Darknet Only / Hybrid All) -->
+                    <div class="mode-segmented-group" id="deep-mode-group">
+                        <button type="button" class="mode-selector-btn active" data-mode="normal" data-scope="deep" title="Clearnet public web search only">
+                            <i data-lucide="shield" class="w-3.5 h-3.5 text-blue-500"></i>
+                            <span>Normal Web</span>
+                        </button>
+                        <button type="button" class="mode-selector-btn" data-mode="darknet_only" data-scope="deep" title="Only Tor .onion hidden services (No clearnet)">
+                            <i data-lucide="key" class="w-3.5 h-3.5 text-purple-500"></i>
+                            <span>🧅 Only Darknet</span>
+                        </button>
+                        <button type="button" class="mode-selector-btn" data-mode="all" data-scope="deep" title="Search both clearnet web &amp; darknet simultaneously">
+                            <i data-lucide="globe" class="w-3.5 h-3.5 text-emerald-500"></i>
+                            <span>Hybrid All</span>
+                        </button>
+                    </div>
+                    <input type="hidden" name="darkweb_mode" id="deep-darkweb-mode-input" value="normal">
+                    <input type="hidden" name="darkweb" id="deep-darkweb" value="false">
+
+                    <!-- Expandable Filters / Options Toggle Button -->
+                    <button type="button" id="btn-toggle-deep-options" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 text-xs font-semibold cursor-pointer select-none transition-all">
+                        <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-zinc-400"></i>
+                        <span>Filters &amp; Settings</span>
+                        <i data-lucide="chevron-down" class="w-3 h-3 text-zinc-400 transition-transform" id="deep-options-chevron"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Compact Collapsible Settings Drawer -->
+            <div id="deep-options-drawer" class="hidden mt-3 pt-3 border-t border-zinc-100 dark:border-white/[0.06] grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Target Website / Domain</label>
+                    <input type="text" name="target_site" id="deep-target-site" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-mono outline-none" placeholder="e.g. github.com, wikipedia.org">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Must Contain In-Page Keywords</label>
+                    <input type="text" name="must_include" id="deep-must-include" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white outline-none" placeholder="e.g. documentation, architecture">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Must Exclude Keywords</label>
+                    <input type="text" name="must_exclude" id="deep-must-exclude" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white outline-none" placeholder="e.g. sponsored, ad, spam">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Max Sources</label>
+                    <input type="number" name="max_sources" id="input-max-sources" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-mono outline-none" value="10" min="1" max="50">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Sub-Queries</label>
+                    <input type="number" name="max_sub_queries" id="input-sub-queries" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-mono outline-none" value="3" min="1" max="8">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Ollama Model</label>
+                    <select name="model" id="ai-model" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white font-mono outline-none cursor-pointer">
+                        <option value="dolphin3:8b" selected>dolphin3:8b (Primary)</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <!-- 40/60 Split Research Workspace -->
+        <div id="deep-research-workspace" class="hidden mt-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                
+                <!-- LEFT 40%: Live Process Monitor -->
+                <div class="lg:col-span-5 sticky top-20 flex flex-col gap-3">
+                    <div class="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50/80 dark:bg-zinc-900/50 overflow-hidden">
+                        <div class="px-4 py-3 border-b border-zinc-100 dark:border-white/[0.06] flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="relative flex h-2 w-2">
+                                    <span id="deep-process-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                                </span>
+                                <span class="text-xs font-bold text-zinc-700 dark:text-zinc-200">Live Intelligence Process</span>
+                            </div>
+                            <span id="deep-process-status" class="text-[10px] font-mono bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800/60">Running...</span>
+                        </div>
+                        <div class="p-3 space-y-1.5 max-h-[60vh] overflow-y-auto" id="deep-process-log">
+                            <div class="text-[11px] text-zinc-400 font-mono">Waiting for dispatch...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT 60%: Discovered Intelligence Feed -->
+                <div class="lg:col-span-7 flex flex-col gap-3">
+                    <div class="flex items-center justify-between px-1 flex-wrap gap-2">
+                        <div class="flex items-center gap-1.5 p-0.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-zinc-200 dark:border-white/10 text-xs">
+                            <button type="button" id="btn-deep-view-feed" class="px-2.5 py-1 rounded-lg font-semibold bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs transition-all flex items-center gap-1.5">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                <span>Intelligence Feed</span>
+                            </button>
+                            <button type="button" id="btn-deep-view-links" class="px-2.5 py-1 rounded-lg font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center gap-1.5">
+                                <i data-lucide="link-2" class="w-3.5 h-3.5"></i>
+                                <span>All Links</span>
+                                <span id="deep-links-count-badge" class="text-[10px] font-mono font-bold bg-zinc-200 dark:bg-white/10 px-1.5 py-0.2 rounded">0</span>
+                            </button>
+                            <button type="button" id="btn-deep-view-history" class="px-2.5 py-1 rounded-lg font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center gap-1.5">
+                                <i data-lucide="history" class="w-3.5 h-3.5"></i>
+                                <span>Past Searches</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="deep-results-count" class="px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-white/10 text-[11px] font-mono font-semibold text-zinc-800 dark:text-zinc-200">0 findings</span>
+                            <button type="button" id="btn-clear-deep-results" title="Clear current investigation" class="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-all">
+                                <i data-lucide="x-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="deep-response" class="flex flex-col gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </article>
 </div>
+
+<!-- ================================================================= -->
+<!-- PANE 2: QUICK MULTI-ENGINE SEARCH & 60/40 SPLIT WORKSPACE -->
+<!-- ================================================================= -->
+<div class="tab-pane" id="pane-quick-search" style="display: none;">
+    <article class="bg-white/90 dark:bg-zinc-900/60 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card relative">
+        <form id="quick-search-form" action="#" onsubmit="return false;">
+            <div class="relative mb-3">
+                <div class="relative flex items-center">
+                    <div class="absolute left-4 pointer-events-none text-zinc-400">
+                        <i data-lucide="search" class="w-5 h-5 text-zinc-400"></i>
+                    </div>
+                    <input class="w-full pl-12 pr-44 py-3.5 bg-zinc-50 dark:bg-zinc-950/40 text-zinc-900 dark:text-white placeholder-zinc-400 rounded-xl border border-zinc-200 dark:border-white/10 focus:border-zinc-800 dark:focus:border-white/30 text-sm font-medium outline-none transition-all"
+                           id="qs-query" placeholder="Search across all engines simultaneously..." required autocomplete="off">
+                    <div class="absolute right-2">
+                        <button type="submit" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 font-semibold text-xs sm:text-sm shadow-sm transition-all" id="qs-submit-btn">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                            <span>Search</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compact Inline Controls Strip (Providers + Mode Switch + Settings Drawer Toggle) -->
+            <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+                <!-- Search Engines List with Explicit Toggles -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1 mr-1">
+                        <span class="text-[11px] font-mono font-bold uppercase text-zinc-400">Engines:</span>
+                        <button type="button" class="btn-all-engines-toggle text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 transition-colors" data-target="qs" data-action="all_on">All ON</button>
+                        <button type="button" class="btn-all-engines-toggle text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 transition-colors" data-target="qs" data-action="all_off">All OFF</button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5" id="qs-engines">
+                        <button type="button" class="engine-toggle active" data-engine="knowledge" data-scope="qs"><span class="engine-icon">🧠</span><span class="engine-name">Knowledge</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="duckduckgo" data-scope="qs"><span class="engine-icon">🦆</span><span class="engine-name">DuckDuckGo</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="bing" data-scope="qs"><span class="engine-icon">🔍</span><span class="engine-name">Bing</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="yahoo" data-scope="qs"><span class="engine-icon">🌐</span><span class="engine-name">Yahoo</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="wikipedia" data-scope="qs"><span class="engine-icon">📖</span><span class="engine-name">Wikipedia</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="brave" data-scope="qs"><span class="engine-icon">🦁</span><span class="engine-name">Brave</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="qwant" data-scope="qs"><span class="engine-icon">⚡</span><span class="engine-name">Qwant</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle active" data-engine="mojeek" data-scope="qs"><span class="engine-icon">🔎</span><span class="engine-name">Mojeek</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">ON</span></button>
+                        <button type="button" class="engine-toggle" data-engine="bunkr" data-scope="qs"><span class="engine-icon">📦</span><span class="engine-name">Bunkr</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">OFF</span></button>
+                        <button type="button" class="engine-toggle" data-engine="searxng" data-scope="qs"><span class="engine-icon">🌌</span><span class="engine-name">SearXNG</span><span class="engine-switch-track"><span class="engine-switch-thumb"></span></span><span class="engine-status-text">OFF</span></button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <!-- 3-Way Search Mode Selector (Normal Web / Darknet Only / Hybrid All) -->
+                    <div class="mode-segmented-group" id="qs-mode-group">
+                        <button type="button" class="mode-selector-btn active" data-mode="normal" data-scope="qs" title="Clearnet public web search only">
+                            <i data-lucide="shield" class="w-3.5 h-3.5 text-blue-500"></i>
+                            <span>Normal Web</span>
+                        </button>
+                        <button type="button" class="mode-selector-btn" data-mode="darknet_only" data-scope="qs" title="Only Tor .onion hidden services (No clearnet)">
+                            <i data-lucide="key" class="w-3.5 h-3.5 text-purple-500"></i>
+                            <span>🧅 Only Darknet</span>
+                        </button>
+                        <button type="button" class="mode-selector-btn" data-mode="all" data-scope="qs" title="Search both clearnet web &amp; darknet simultaneously">
+                            <i data-lucide="globe" class="w-3.5 h-3.5 text-emerald-500"></i>
+                            <span>Hybrid All</span>
+                        </button>
+                    </div>
+                    <input type="hidden" name="darkweb_mode" id="qs-darkweb-mode-input" value="normal">
+                    <input type="hidden" name="darkweb" id="qs-darkweb" value="false">
+
+                    <!-- Expandable Filters / Options Toggle Button -->
+                    <button type="button" id="btn-toggle-qs-options" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 text-xs font-semibold cursor-pointer select-none transition-all">
+                        <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-zinc-400"></i>
+                        <span>Target &amp; Keywords</span>
+                        <i data-lucide="chevron-down" class="w-3 h-3 text-zinc-400 transition-transform" id="qs-options-chevron"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Compact Collapsible Settings Drawer -->
+            <div id="qs-options-drawer" class="hidden mt-3 pt-3 border-t border-zinc-100 dark:border-white/[0.06] grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div>
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Target Website / Domain</label>
+                    <input type="text" id="qs-target-site" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-mono outline-none" placeholder="e.g. reddit.com, github.com">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Must Contain In-Page Keywords</label>
+                    <input type="text" id="qs-must-include" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white outline-none" placeholder="e.g. documentation, release">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Must Exclude Keywords</label>
+                    <input type="text" id="qs-must-exclude" class="w-full bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white outline-none" placeholder="e.g. ad, spam, sponsor">
+                </div>
+            </div>
+        </form>
+    </article>
+
+    <!-- 60% / 40% Dynamic Split-Screen Intelligence Workspace -->
+    <div id="quick-search-workspace" class="hidden mt-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            
+            <!-- LEFT 60% - 65% AREA: Intelligence Findings & Search Results -->
+            <div class="lg:col-span-8 flex flex-col gap-3">
+                <div class="flex items-center justify-between px-1 flex-wrap gap-2">
+                    <div class="flex items-center gap-1.5 p-0.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-zinc-200 dark:border-white/10 text-xs">
+                        <button type="button" id="btn-qs-view-cards" class="px-2.5 py-1 rounded-lg font-semibold bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs transition-all flex items-center gap-1.5">
+                            <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-indigo-500"></i>
+                            <span>Results Feed</span>
+                        </button>
+                        <button type="button" id="btn-qs-view-links" class="px-2.5 py-1 rounded-lg font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center gap-1.5">
+                            <i data-lucide="link-2" class="w-3.5 h-3.5"></i>
+                            <span>All Links</span>
+                            <span id="qs-links-count-badge" class="text-[10px] font-mono font-bold bg-zinc-200 dark:bg-white/10 px-1.5 py-0.2 rounded">0</span>
+                        </button>
+                        <button type="button" id="btn-qs-view-history" class="px-2.5 py-1 rounded-lg font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center gap-1.5">
+                            <i data-lucide="history" class="w-3.5 h-3.5"></i>
+                            <span>Past Searches</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="results-count-badge" class="px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-white/10 text-[11px] font-mono font-semibold text-zinc-800 dark:text-zinc-200">0 results</span>
+                        <span id="quick-search-status"></span>
+                        <button type="button" id="btn-clear-qs-results" title="Clear current results" class="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-all">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="quick-search-results"></div>
+            </div>
+
+
+            <!-- RIGHT 35% - 40% AREA: Live Controller & Inspection Sidebar -->
+            <div class="lg:col-span-4 sticky top-20 flex flex-col gap-3.5">
+                <div class="bg-white/90 dark:bg-zinc-900/60 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 rounded-2xl p-4 shadow-card">
+                    
+                    <!-- Live Status & Stop Action -->
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-zinc-100 dark:border-white/[0.06]">
+                        <div class="flex items-center gap-2">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" id="live-search-pulse"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span class="text-xs font-semibold text-zinc-900 dark:text-white" id="live-control-status">Ready</span>
+                        </div>
+                        <button type="button" id="btn-stop-search" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 text-xs font-semibold transition-all">
+                            <i data-lucide="square" class="w-3 h-3 fill-current"></i>
+                            <span>Stop</span>
+                        </button>
+                    </div>
+
+                    <!-- Interactive Live In-Page Keyword Refiner -->
+                    <div class="mb-3.5">
+                        <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1.5">
+                            Filter &amp; Refine Inside Search
+                        </label>
+                        <div class="relative flex items-center gap-1.5">
+                            <input type="text" id="live-refine-input" class="w-full bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-zinc-400 dark:focus:border-white/30" placeholder="Type keyword to filter results live...">
+                            <button type="button" id="btn-apply-refine" class="px-2.5 py-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold shrink-0">Filter</button>
+                        </div>
+                        <p class="text-[10px] text-zinc-400 mt-1" id="refine-match-status">Matching all results</p>
+                    </div>
+
+                    <!-- Crawled Data & Source Metrics -->
+                    <div class="mb-3">
+                        <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1.5">
+                            Crawled Domains &amp; Endpoints
+                        </label>
+                        <div id="crawled-domains-list" class="max-h-36 overflow-y-auto flex flex-col gap-1.5 text-xs pr-1">
+                            <div class="text-zinc-400 text-[11px]">No active crawl stream yet.</div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Log Ticker -->
+                    <div>
+                        <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                            Live Investigation Log
+                        </label>
+                        <pre class="live-log text-[10px] p-2 max-h-24" id="live-search-log">Ready for query dispatch.</pre>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- PANE 3: VISUAL & REVERSE IMAGE SEARCH -->
+<!-- ================================================================= -->
+<div class="tab-pane" id="pane-visual-search" style="display: none;">
+    <article class="bg-white/90 dark:bg-zinc-900/60 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card">
+        <div class="dropzone" id="image-dropzone">
+            <i data-lucide="upload-cloud" class="dropzone-icon"></i>
+            <p>Drag &amp; drop an image here or click to browse</p>
+            <small>Perceptual biometric hashes + online reverse web lookup</small>
+            <input type="file" id="image-file-input" accept="image/*">
+        </div>
+
+        <div id="image-preview-area"></div>
+        <div id="visual-search-status" style="margin-top: 10px;"></div>
+    </article>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div>
+            <div class="flex items-center gap-2 mb-2.5">
+                <i data-lucide="database" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">Local DB Matches</h3>
+            </div>
+            <div id="local-image-matches" class="visual-grid">
+                <div class="text-zinc-500 dark:text-zinc-400 text-xs p-4 bg-white/60 dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-white/10">Upload an image to scan local database.</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="flex items-center gap-2 mb-2.5">
+                <i data-lucide="globe" class="w-4 h-4 text-zinc-400"></i>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">Online Reverse Web Matches</h3>
+            </div>
+            <div id="online-image-matches">
+                <div class="text-zinc-500 dark:text-zinc-400 text-xs p-4 bg-white/60 dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-white/10">Upload an image to query web reverse search.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- PANE 4: CUSTOM SCRAPER & DB UPDATER -->
+<!-- ================================================================= -->
+<div class="tab-pane" id="pane-scraper" style="display: none;">
+    <article class="bg-white/90 dark:bg-zinc-900/60 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card">
+        <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <div class="flex items-center gap-2">
+                <i data-lucide="bot" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Target Web Scraper &amp; Intelligence Harvester</h3>
+            </div>
+            <span class="status-pill text-[11px]">Auto-Normalizer Active</span>
+        </div>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-4">
+            Extract profiles, avatars, age, country, and social links from custom websites or choose from curated adult &amp; creator presets.
+        </p>
+
+        <!-- Curated Target Quick Presets -->
+        <div class="mb-4 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200/80 dark:border-white/5">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-mono uppercase font-bold text-zinc-500 tracking-wider">Quick Preset Targets</span>
+                <span class="text-[10px] text-zinc-400">Click to autofill URL &amp; keyword filters</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 text-xs">
+                <button type="button" class="preset-target-btn px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/20 transition-all shadow-xs"
+                        data-url="https://www.pornhub.com/pornstars?gender=female"
+                        data-include="verified"
+                        data-exclude="banned"
+                        data-category="Top Star">
+                    🏆 Top Adult Stars
+                </button>
+                <button type="button" class="preset-target-btn px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/20 transition-all shadow-xs"
+                        data-url="https://www.pornhub.com/pornstars?gender=female&sort=rank"
+                        data-include="model"
+                        data-exclude="inactive"
+                        data-category="New Star">
+                    🌟 New Stars (18-24)
+                </button>
+                <button type="button" class="preset-target-btn px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/20 transition-all shadow-xs"
+                        data-url="https://onlysearch.co"
+                        data-include="onlyfans"
+                        data-exclude="spam"
+                        data-category="OnlyFans Star">
+                    ✨ OnlyFans Creators
+                </button>
+                <button type="button" class="preset-target-btn px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/20 transition-all shadow-xs"
+                        data-url="https://www.themoviedb.org/person"
+                        data-include="actor, popular"
+                        data-exclude="crew"
+                        data-category="Movie Star">
+                    🎬 Mainstream Film Stars
+                </button>
+            </div>
+        </div>
+
+        <form id="scraper-form">
+            <div class="mb-3">
+                <label class="block text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">Target Website URL</label>
+                <div class="relative flex items-center">
+                    <div class="absolute left-3.5 pointer-events-none text-zinc-400">
+                        <i data-lucide="globe" class="w-4 h-4"></i>
+                    </div>
+                    <input type="url" id="scraper-url" class="input-main w-full pl-10 pr-4 py-2.5 text-sm" placeholder="https://example.com/directory" required>
+                </div>
+            </div>
+
+            <div class="keyword-box">
+                <div class="field-group">
+                    <label>Must Include Keywords</label>
+                    <input type="text" id="scraper-must-include" class="input-text" placeholder="e.g. verified, active, top">
+                </div>
+                <div class="field-group">
+                    <label>Must Exclude Keywords</label>
+                    <input type="text" id="scraper-must-exclude" class="input-text" placeholder="e.g. inactive, banned">
+                </div>
+                <div class="field-group">
+                    <label>Max Items to Harvest</label>
+                    <input type="number" id="scraper-max-items" class="input-text" value="50" min="1" max="500">
+                </div>
+                <div class="field-group flex items-center gap-2 mt-4">
+                    <label class="chip active m-0" id="chip-download-images">
+                        <input type="checkbox" id="scraper-download-images" checked>
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Auto-Download Photos</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-4 flex gap-3 items-center">
+                <button type="submit" class="btn-primary">
+                    <i data-lucide="play" class="w-4 h-4"></i>
+                    <span>Start Scraper Task</span>
+                </button>
+                <div id="scraper-status-box"></div>
+            </div>
+        </form>
+
+        <div class="progress-bar-wrap mt-3">
+            <div class="progress-bar-fill" id="scraper-progress-fill"></div>
+        </div>
+
+        <div class="mt-3">
+            <div class="flex items-center gap-1.5 mb-1">
+                <i data-lucide="terminal" class="w-3.5 h-3.5 text-zinc-400"></i>
+                <label class="text-[10px] font-mono uppercase font-bold text-zinc-500">Live Scraper Telemetry</label>
+            </div>
+            <pre class="live-log font-mono text-xs" id="scraper-log">Ready to scrape.</pre>
+        </div>
+    </article>
+</div>
+
+<!-- ================================================================= -->
+<!-- PANE 5: LOCAL DATABASE EXPLORER & CREATOR HUB -->
+<!-- ================================================================= -->
+<!-- ================================================================= -->
+<!-- PANE 5: LOCAL DATABASE EXPLORER & CREATOR HUB -->
+<!-- ================================================================= -->
+<div class="tab-pane" id="pane-directory" style="display: none;">
+    <div class="dir-layout-container">
+        
+        <!-- SMALL BOX: CONTROLS, DATABASE UPDATER & FILTERS -->
+        <aside class="dir-sidebar-box">
+            
+            <!-- Database Live Updater Card -->
+            <div class="crawler-control-card">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4 text-indigo-500"></i>
+                        <h4 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Database Sync</h4>
+                    </div>
+                    <span id="crawler-state-badge" class="badge-tag" style="display: none;">Idle</span>
+                </div>
+
+                <div class="space-y-2 mt-1">
+                    <div>
+                        <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Target Category</label>
+                        <select id="crawl-category-select" class="input-text text-xs py-1.5 w-full">
+                            <option value="OnlyFans Star">✨ OnlyFans Stars</option>
+                            <option value="New Star">🌟 New Stars (18-24)</option>
+                            <option value="Top Star">🏆 Top Performing Stars</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Batch Count</label>
+                        <select id="crawl-count-input" class="input-text text-xs py-1.5 w-full">
+                            <option value="50">50 Models</option>
+                            <option value="150" selected>150 Models</option>
+                            <option value="500">500 Models</option>
+                            <option value="1000">1,000 Models (Deep Crawl)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-primary w-full py-2 px-3 text-xs justify-center font-semibold mt-2" id="btn-start-creator-crawl">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Update Database</span>
+                    </button>
+                </div>
+
+                <!-- Live Progress & Telemetry Box -->
+                <div id="crawler-telemetry-panel" class="crawler-telemetry-box mt-2" style="display: none;">
+                    <div class="flex justify-between items-center text-[11px]">
+                        <span class="text-zinc-400">Progress:</span>
+                        <span id="crawler-progress-counter" class="font-bold text-zinc-900 dark:text-white">0 / 0 (0%)</span>
+                    </div>
+
+                    <div class="telemetry-progress-track">
+                        <div id="crawler-progress-fill" class="telemetry-progress-fill"></div>
+                    </div>
+
+                    <div id="crawler-status-msg" class="text-[11px] text-zinc-500 dark:text-zinc-400 truncate" title="Crawler status">
+                        Initializing sync...
+                    </div>
+
+                    <!-- Pause & Stop Interactive Controls -->
+                    <div class="flex gap-2 mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                        <button id="btn-crawler-pause" class="btn-ctrl-pause flex-1 justify-center">
+                            <i data-lucide="pause" class="w-3.5 h-3.5"></i>
+                            <span>Pause</span>
+                        </button>
+                        <button id="btn-crawler-stop" class="btn-ctrl-stop flex-1 justify-center">
+                            <i data-lucide="square" class="w-3.5 h-3.5"></i>
+                            <span>Stop</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter & Search Box -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-indigo-500"></i>
+                        <h4 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Search &amp; Filters</h4>
+                    </div>
+                    <button id="btn-reset-filters" class="text-[11px] text-zinc-500 hover:text-indigo-500 font-medium">Reset</button>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Search Performer / Star</label>
+                    <input type="text" id="dir-search-input" class="input-text text-xs py-1.5 w-full" placeholder="Search name or alias..." autocomplete="off">
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Category</label>
+                    <select id="dir-category-select" class="input-text text-xs py-1.5 w-full">
+                        <option value="">All Categories</option>
+                        <option value="OnlyFans Star">✨ OnlyFans Star</option>
+                        <option value="New Star">🌟 New Star (18-24)</option>
+                        <option value="Top Star">🏆 Top Star</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Country / Origin</label>
+                    <select id="dir-country-select" class="input-text text-xs py-1.5 w-full">
+                        <option value="">All Countries</option>
+                        <option value="United States">🇺🇸 United States</option>
+                        <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                        <option value="Canada">🇨🇦 Canada</option>
+                        <option value="Australia">🇦🇺 Australia</option>
+                        <option value="France">🇫🇷 France</option>
+                        <option value="Germany">🇩🇪 Germany</option>
+                        <option value="Spain">🇪🇸 Spain</option>
+                        <option value="Italy">🇮🇹 Italy</option>
+                        <option value="Brazil">🇧🇷 Brazil</option>
+                        <option value="Colombia">🇨🇴 Colombia</option>
+                        <option value="Russia">🇷🇺 Russia</option>
+                        <option value="Ukraine">🇺🇦 Ukraine</option>
+                        <option value="Japan">🇯🇵 Japan</option>
+                        <option value="Czech Republic">🇨🇿 Czech Republic</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Age Range</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" id="dir-age-min" class="input-text text-xs py-1.5 w-full" placeholder="Min (18)" min="18" max="99">
+                        <span class="text-zinc-400 text-xs">-</span>
+                        <input type="number" id="dir-age-max" class="input-text text-xs py-1.5 w-full" placeholder="Max" min="18" max="99">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block mb-1">Sort Order</label>
+                    <select id="dir-sort-select" class="input-text text-xs py-1.5 w-full">
+                        <option value="has_photo" selected>🖼️ With Photos First</option>
+                        <option value="views">🔥 Most Views</option>
+                        <option value="videos">🎬 Most Videos</option>
+                        <option value="age">🎂 Youngest Age</option>
+                        <option value="name">🔤 Alphabetical (A-Z)</option>
+                    </select>
+                </div>
+
+                <div class="pt-1">
+                    <label class="chip w-full justify-center m-0 py-2 cursor-pointer" id="chip-has-photo">
+                        <input type="checkbox" id="dir-has-photo-cb">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                        <span>Photos Only</span>
+                    </label>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- LARGE BOX: PERFORMER & CREATOR MODELS SHOWCASE -->
+        <main class="dir-main-box">
+            
+            <!-- Top Bar with Stats & Mini Pagination -->
+            <div class="dir-header-bar">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-indigo-500"></i>
+                        <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Performer &amp; Creator Directory</h3>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="dir-total-count" class="status-pill text-xs">Loading records...</span>
+                        <span id="dir-photos-count" class="status-pill text-xs">0 photos</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span id="dir-page-indicator-top" class="text-xs text-zinc-500 font-mono">Page 1</span>
+                    <button class="btn-page-nav" id="btn-page-prev-top" title="Previous Page">
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button class="btn-page-nav" id="btn-page-next-top" title="Next Page">
+                        <span>Next</span>
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Models Grid -->
+            <div id="directory-grid" class="visual-grid"></div>
+
+            <!-- Infinite Scroll Loader Sentinel -->
+            <div id="dir-scroll-sentinel" class="dir-scroll-sentinel">
+                <span id="dir-scroll-text" class="text-xs text-zinc-500 flex items-center gap-2">
+                    <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Scroll down to load more models...
+                </span>
+            </div>
+
+            <!-- Bottom Pagination Bar -->
+            <div class="dir-pagination-bar">
+                <div class="text-xs text-zinc-500" id="dir-showing-range">
+                    Showing models...
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button class="btn-page-nav" id="btn-page-first" title="First Page">
+                        <i data-lucide="chevrons-left" class="w-3.5 h-3.5"></i>
+                        <span>First</span>
+                    </button>
+                    <button class="btn-page-nav" id="btn-page-prev">
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                        <span>Previous</span>
+                    </button>
+                    <span id="dir-page-indicator" class="text-xs font-mono font-medium px-2 text-zinc-900 dark:text-white">Page 1</span>
+                    <button class="btn-page-nav" id="btn-page-next">
+                        <span>Next Page</span>
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- PANE 6: ENGINE DIAGNOSTICS -->
+<!-- ================================================================= -->
+<div class="tab-pane" id="pane-diagnostics" style="display: none;">
+    <article class="bg-white/90 dark:bg-zinc-900/60 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-indigo-500"></i>
+                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Search Engine &amp; Service Health Matrix</h3>
+                </div>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">Live latency monitor for all clearnet providers, Tor gateways, and Ollama LLMs.</p>
+            </div>
+            <button class="btn-secondary text-xs" id="btn-run-diag" onclick="runDiagnostics()">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Re-test All Engines</span>
+            </button>
+        </div>
+
+        <table class="diag-table" id="diag-table">
+            <thead>
+                <tr>
+                    <th>Service / Engine</th>
+                    <th>Network</th>
+                    <th>Health Status</th>
+                    <th>Response Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Click "Re-test" or open tab to test engines.</td>
+                </tr>
+            </tbody>
+        </table>
+    </article>
+</div>
+
 {% endblock %}
+
 {% block scripts %}
-<script>
-let researchMode = 'research';
-function setMode(mode) {
-    researchMode = mode;
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('[data-mode="' + mode + '"]').classList.add('active');
-    document.getElementById('submit-btn').textContent = mode === 'images' ? 'Search Images' : 'Start Research';
-}
-document.getElementById('research-form').addEventListener('htmx:afterRequest', function(evt) {
-    // Navigate to the research progress page once the job is created
-    if (evt.detail.successful) {
-        try {
-            const data = JSON.parse(evt.detail.xhr.responseText);
-            if (data.job_id) {
-                window.location.href = '/research/' + data.job_id;
-            }
-        } catch(e) { /* ignore */ }
-    }
-});
-document.getElementById('research-form').addEventListener('htmx:htmx:configRequest', function(evt) {
-    // Inject the mode into the form post
-    evt.detail.parameters['mode'] = researchMode;
-});
-document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/models').then(r => r.json()).then(data => {
-        const sel = document.getElementById('model');
-        if (data.models && data.models.length) {
-            sel.innerHTML = '';
-            data.models.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                if (m === data.current) opt.selected = true;
-                sel.appendChild(opt);
-            });
-        }
-    }).catch(() => {});
-});
-</script>
+<!-- In-page deep research & quick search workspace are initialized via app.js -->
 {% endblock %}
+

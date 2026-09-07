@@ -32,6 +32,10 @@ class Job:
     max_sub_queries: int
     model: str
     mode: str = "research"  # research | images
+    search_mode: str = "normal"  # normal | adult
+    darkweb_mode: str = "normal"  # normal | darknet_only | all
+    engines: list[str] = field(default_factory=list)
+    deep: bool = False
     status: str = "queued"  # queued | running | done | error
     error: str | None = None
     created_at: float = field(default_factory=time.time)
@@ -49,6 +53,10 @@ class Job:
             "max_sub_queries": self.max_sub_queries,
             "model": self.model,
             "mode": self.mode,
+            "search_mode": self.search_mode,
+            "darkweb_mode": self.darkweb_mode,
+            "engines": self.engines,
+            "deep": self.deep,
             "status": self.status,
             "error": self.error,
             "created_at": self.created_at,
@@ -67,6 +75,10 @@ class Job:
             max_sub_queries=d.get("max_sub_queries", 3),
             model=d.get("model", "dolphin3:8b"),
             mode=d.get("mode", "research"),
+            search_mode=d.get("search_mode", "normal"),
+            darkweb_mode=d.get("darkweb_mode", "normal"),
+            engines=d.get("engines", []),
+            deep=d.get("deep", False),
             status=d.get("status", "done"),
             error=d.get("error"),
             created_at=d.get("created_at", time.time()),
@@ -98,20 +110,28 @@ class JobManager:
         self,
         query: str,
         darkweb: bool = False,
+        darkweb_mode: str = "normal",
+        engines: list[str] | None = None,
         max_sources: int = 10,
         max_sub_queries: int = 3,
         model: str = "dolphin3:8b",
         mode: str = "research",
+        search_mode: str = "normal",
+        deep: bool = False,
     ) -> str:
         job_id = uuid.uuid4().hex[:12]
         job = Job(
             id=job_id,
             query=query,
-            darkweb=darkweb,
+            darkweb=darkweb or (darkweb_mode in ("darknet_only", "all", "hybrid")),
+            darkweb_mode=darkweb_mode,
+            engines=engines or [],
             max_sources=max_sources,
             max_sub_queries=max_sub_queries,
             model=model,
             mode=mode,
+            search_mode=search_mode,
+            deep=deep,
         )
         with self._lock:
             self._jobs[job_id] = job
@@ -158,11 +178,17 @@ class JobManager:
         """Execute the pipeline and broadcast events."""
         from research.config import load_config
 
+        is_darknet = job.darkweb or (job.darkweb_mode in ("darknet_only", "all", "hybrid"))
         cfg = load_config(
-            darkweb_enabled=job.darkweb,
+            darkweb_enabled=is_darknet,
             max_sources=job.max_sources,
         )
+        if job.engines:
+            cfg.search.engines = [e for e in job.engines if e.lower() != "tor"]
+        cfg.search.darkweb_mode = job.darkweb_mode
         cfg.search.max_sub_queries = job.max_sub_queries
+        cfg.search.mode = job.search_mode
+        cfg.search.deep = job.deep
         cfg.ollama.model = job.model
 
         pipeline = ResearchPipeline(cfg)

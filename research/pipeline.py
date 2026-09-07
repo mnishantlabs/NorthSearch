@@ -100,7 +100,8 @@ class ResearchPipeline:
             f'Breaking down "{query}" into sub-queries',
         )
         self._emit(type="stage", title="Query Planning", detail='Breaking down the query')
-        sub_queries = self.decomposer.decompose(query, self.config.search.max_sub_queries)
+        sub_query_limit = self._effective_sub_queries()
+        sub_queries = self.decomposer.decompose(query, sub_query_limit)
         emitted = []
         for sq in sub_queries:
             progress_log(f"[dim]{sq.aspect}[/dim] -> [bold]{sq.query}[/bold]", style="white")
@@ -108,32 +109,36 @@ class ResearchPipeline:
         self._emit(type="plan", sub_queries=emitted)
 
         # ── Step 2: Search clearnet ───────────────────────────
-        section_header("Step 3: Web Search", "Searching the public internet")
-        self._emit(type="stage", title="Web Search", detail="Searching the public internet")
+        run_clearnet = getattr(self.config.search, "darkweb_mode", "normal") in ("normal", "all", "hybrid")
+        run_darknet = getattr(self.config.search, "darkweb_mode", "normal") in ("darknet_only", "all", "hybrid", "darkweb") or bool(self.darkweb)
+
         results_by_query: list[list[SearchResult]] = []
         all_results: list[SearchResult] = []
 
-        for sq in sub_queries:
-            subsection(f'Query: "{sq.query}"')
-            self._emit(type="search_query", query=sq.query, status="searching")
-            results = self.search_engine.search(sq.query)
-            results_by_query.append(results)
-            all_results.extend(results)
-            progress_log(f"{len(results)} results found", style="white")
-            self._emit(
-                type="search_query",
-                query=sq.query,
-                status="done",
-                count=len(results),
-                results=[
-                    {"url": r.url, "title": r.title, "snippet": r.snippet[:150]}
-                    for r in results
-                ],
-            )
+        if run_clearnet:
+            section_header("Step 3: Web Search", "Searching the public internet")
+            self._emit(type="stage", title="Web Search", detail="Searching the public internet")
+            for sq in sub_queries:
+                subsection(f'Query: "{sq.query}"')
+                self._emit(type="search_query", query=sq.query, status="searching")
+                results = self.search_engine.search(sq.query)
+                results_by_query.append(results)
+                all_results.extend(results)
+                progress_log(f"{len(results)} results found", style="white")
+                self._emit(
+                    type="search_query",
+                    query=sq.query,
+                    status="done",
+                    count=len(results),
+                    results=[
+                        {"url": r.url, "title": r.title, "snippet": r.snippet[:150]}
+                        for r in results
+                    ],
+                )
 
         # ── Step 2b: Search dark web ──────────────────────────
         darkweb_results: list[SearchResult] = []
-        if self.darkweb:
+        if self.darkweb and run_darknet:
             section_header("Step 3b: Dark Web Search", "Searching .onion hidden services")
             self._emit(type="stage", title="Dark Web Search", detail="Searching .onion hidden services")
             for sq in sub_queries:
@@ -197,7 +202,7 @@ class ResearchPipeline:
         sources = self.verifier.verify_and_extract(
             fused,
             query=query,
-            max_sources=self.config.max_sources,
+            max_sources=self._effective_max_sources(),
             use_tor=use_tor,
             on_extracted=self._on_extracted,
         )
@@ -301,6 +306,16 @@ class ResearchPipeline:
         self._emit(type="images_done", count=len(images))
         progress_log(f"Found [bold]{len(images)}[/bold] images across providers")
         return images
+
+    def _effective_sub_queries(self) -> int:
+        """Deep search raises the query-decomposition budget."""
+        base = self.config.search.max_sub_queries
+        return int(base * 2) if self.config.search.deep else base
+
+    def _effective_max_sources(self) -> int:
+        """Deep search raises the number of pages extracted."""
+        base = self.config.max_sources
+        return int(base * 2) if self.config.search.deep else base
 
     def _prepare_topic_dir(self, query: str) -> Path:
         """Create a per-topic output directory with a nice structure.

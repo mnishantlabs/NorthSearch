@@ -1,9 +1,9 @@
-"""SearXNG provider — queries any public SearXNG instance via its JSON API."""
+"""SearXNG provider — queries public SearXNG instances with automatic fallback."""
 
 from __future__ import annotations
 
 import logging
-from urllib.parse import quote_plus
+from typing import Any
 
 from research.models import ImageResult, SearchResult
 from research.search.classification import classify_source
@@ -11,18 +11,23 @@ from research.search.providers.base import SearchProvider
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_INSTANCES = [
+    "https://searx.be",
+    "https://priv.au",
+    "https://search.sapti.me",
+    "https://searxng.site",
+]
+
 
 class SearXNGProvider(SearchProvider):
-    """Search via a public SearXNG instance.
-
-    SearXNG exposes ``/search?format=json&q=...&categories=...``.
-    """
+    """Search via a public SearXNG instance with fallback support."""
 
     name = "searxng"
 
-    def __init__(self, *args, **kwargs):  # noqa: ANN002
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._base = self.config.searxng_base_url.rstrip("/")
+        base = getattr(self.config, "searxng_base_url", "https://searx.be").rstrip("/")
+        self._instances = [base] + [u for u in _DEFAULT_INSTANCES if u != base]
 
     def search(self, query: str, max_results: int) -> list[SearchResult]:
         return self._query(query, "general", max_results)
@@ -45,10 +50,6 @@ class SearXNGProvider(SearchProvider):
             )
         return images
 
-    # ------------------------------------------------------------------
-    # helpers
-    # ------------------------------------------------------------------
-
     def _query(
         self, query: str, category: str, max_results: int
     ) -> list[SearchResult]:
@@ -70,7 +71,7 @@ class SearXNGProvider(SearchProvider):
             )
         return results
 
-    def _raw_query(self, query: str, category: str, max_results: int) -> list[dict]:
+    def _raw_query(self, query: str, category: str, max_results: int) -> list[dict[str, Any]]:
         params = {
             "q": query,
             "format": "json",
@@ -78,13 +79,30 @@ class SearXNGProvider(SearchProvider):
             "language": "en",
             "pageno": 1,
         }
+        for base_url in self._instances:
+            try:
+                r = self.client.get(f"{base_url}/search", params=params, timeout=3)
+                if r.status_code == 200:
+                    data = r.json()
+                    res = data.get("results", [])
+                    if res:
+                        return res[:max_results]
+            except Exception:
+                continue
+
+        # Fallback via DDGS
         try:
-            r = self.client.get(f"{self._base}/search", params=params)
-            r.raise_for_status()
-            data = r.json()
-            return data.get("results", [])[:max_results]
-        except Exception as e:  # noqa: BLE001
-            logger.warning(
-                "SearXNG request failed (%s): %s", self._base, e
-            )
-            return []
+            from ddgs import DDGS
+            with DDGS() as ddgs:
+                fallback_results = []
+                for hit in ddgs.text(query, max_results=max_results):
+                    fallback_results.append({
+                        "url": hit.get("href", ""),
+                        "title": hit.get("title", ""),
+                        "content": hit.get("body", ""),
+                    })
+                return fallback_results
+        except Exception:
+            pass
+
+        return []
